@@ -1,0 +1,3310 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Dashboard</title>
+
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 2. Google Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- 3. Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.395.0/dist/umd/lucide.min.js"></script>
+
+    <!-- 4. Chart.js (for Subscription Tracker) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+    <script>
+        // Tailwind config for dark mode
+        tailwind.config = {
+            darkMode: 'class', // Enable 'class' strategy for dark mode
+        }
+    </script>
+
+    <style>
+        /* Use Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #94a3b8;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background-color: #f1f5f9;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #475569;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-track {
+            background-color: #1e293b;
+        }
+
+        /* Active nav item */
+        .nav-active {
+            @apply bg-blue-100 text-blue-700 dark:bg-slate-700 dark:text-blue-300;
+        }
+
+        /* Sidebar transition */
+        #sidebar {
+            transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+        }
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #2563eb; /* CHANGED: Blue-600 */
+            animation: spin 1s ease infinite;
+        }
+        .dark .spinner {
+            border-left-color: #60a5fa; /* CHANGED: Blue-300 */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Floating Action Button (FAB) styles */
+        .fab-menu {
+            transition: all 0.3s ease-out;
+        }
+        /* NEW: Landing page background with image */
+        #landingHero {
+            background: linear-gradient(135deg, rgba(240, 249, 255, 0.9) 0%, rgba(224, 242, 254, 0.8) 100%),
+                        url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80') center/cover;
+        }
+        .dark #landingHero {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(51, 65, 85, 0.8) 100%),
+                        url('https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80') center/cover;
+        }
+        /* Image styling */
+        .feature-image {
+            height: 200px;
+            object-fit: cover;
+            width: 100%;
+        }
+        .dashboard-image {
+            height: 120px;
+            object-fit: cover;
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        /* Active tab styling */
+        .tab-active {
+            @apply border-blue-500 text-blue-600 dark:text-blue-400;
+        }
+
+        /* Hero Animation */
+        .hero-text {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        .hero-text:nth-child(1) {
+            animation-delay: 0.2s;
+        }
+
+        .hero-text:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+
+        .hero-text:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* FAQ Accordion */
+        .faq-item {
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dark .faq-item {
+            border-bottom: 1px solid #475569;
+        }
+
+        .faq-question {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .faq-answer.open {
+            max-height: 500px;
+        }
+
+        /* Scroll to top button */
+        .scroll-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #2563eb;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .scroll-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-to-top:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* Loader */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .dark .loader {
+            background-color: #0f172a;
+        }
+
+        .loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* ========== ADDITIONAL STYLES ========== */
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .dark .loading-overlay {
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        /* Notification Badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* API Loading States */
+        .api-loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        /* Success/Error Messages */
+        .api-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .api-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .api-error {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* Responsive Improvements */
+        @media (max-width: 768px) {
+            .mobile-hidden {
+                display: none !important;
+            }
+
+            .mobile-full {
+                width: 100% !important;
+            }
+        }
+
+        /* Animation Improvements */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="h-full bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+<!-- Loader -->
+<div id="loader" class="loader">
+    <div class="flex flex-col items-center">
+        <div class="spinner"></div>
+        <p class="mt-4 text-lg font-medium">Loading Home Dashboard...</p>
+    </div>
+</div>
+
+<!-- Scroll to top button -->
+<div id="scrollToTop" class="scroll-to-top">
+    <i data-lucide="arrow-up" class="w-6 h-6"></i>
+</div>
+
+<!-- App container -->
+<div id="app" class="h-full">
+    <!-- ======================= -->
+    <!-- LANDING PAGE -->
+    <!-- ======================= -->
+    <div id="landingPage" class="flex flex-col min-h-full">
+        <!-- Header -->
+        <header class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-sm sticky top-0 z-20">
+            <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center">
+                            <span class="text-2xl font-bold text-blue-600 dark:text-blue-400 flex items-center">
+                                <i data-lucide="home" class="w-7 h-7 mr-2"></i>
+                                Home App
+                            </span>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-4">
+                        <a href="#features" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Features</a>
+                        <a href="#testimonials" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Testimonials</a>
+                        <a href="#pricing" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">Pricing</a>
+                        <a href="#faq" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">FAQ</a>
+                        <a href="#about" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">About</a>
+                        <button id="goToLoginFromLanding" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">
+                            Login
+                        </button>
+                        <button id="goToSignupFromLanding" class="ml-4 inline-flex items-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                            Get Started
+                        </button>
+                    </div>
+                    <!-- Mobile Menu Button -->
+                    <div class="md:hidden flex items-center">
+                        <button id="goToLoginFromLandingMobile" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium">
+                            Login
+                        </button>
+                        <button id="goToSignupFromLandingMobile" class="ml-2 inline-flex items-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                            Sign Up
+                        </button>
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <!-- Hero Section -->
+        <main class="flex-1">
+            <div id="landingHero" class="min-h-[80vh] flex items-center">
+                <!-- NEW: Two-column hero with background image -->
+                <div class="max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8 w-full">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                        <!-- Left: Text Content -->
+                        <div class="text-center md:text-left">
+                            <h1 class="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
+                                <span class="block hero-text">Manage your home.</span>
+                                <span class="block text-blue-600 dark:text-blue-400 hero-text">All in one place.</span>
+                            </h1>
+                            <p class="mt-6 max-w-md mx-auto md:mx-0 text-lg text-gray-700 dark:text-gray-300 sm:text-xl md:mt-8 hero-text">
+                                From subscriptions and bills to your pantry inventory. Stop juggling apps and take control of your household.
+                            </p>
+                            <div class="mt-8 max-w-md mx-auto sm:flex sm:justify-center md:justify-start md:mt-10">
+                                <div class="rounded-md shadow hero-text">
+                                    <button id="goToSignupFromLandingHero" class="w-full flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-8 py-3 text-base font-medium text-white hover:bg-blue-700 md:py-4 md:px-10 md:text-lg">
+                                        Get Started
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right: Optional - You can remove this image since we have background -->
+                        <div class="mt-12 md:mt-0 hidden md:block">
+                            <div class="bg-white/20 dark:bg-slate-800/20 backdrop-blur-sm rounded-xl p-6 border border-white/30 dark:border-slate-600/30">
+                                <p class="text-sm text-gray-700 dark:text-gray-300 text-center mb-4">Your complete home management solution</p>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="text-center p-4 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                                        <i data-lucide="wallet" class="w-8 h-8 mx-auto text-blue-600 dark:text-blue-400 mb-2"></i>
+                                        <p class="text-xs font-medium">Subscriptions</p>
+                                    </div>
+                                    <div class="text-center p-4 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                                        <i data-lucide="receipt" class="w-8 h-8 mx-auto text-red-600 dark:text-red-400 mb-2"></i>
+                                        <p class="text-xs font-medium">Bills</p>
+                                    </div>
+                                    <div class="text-center p-4 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                                        <i data-lucide="shopping-cart" class="w-8 h-8 mx-auto text-yellow-600 dark:text-yellow-400 mb-2"></i>
+                                        <p class="text-xs font-medium">Expenses</p>
+                                    </div>
+                                    <div class="text-center p-4 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                                        <i data-lucide="scan-food" class="w-8 h-8 mx-auto text-green-600 dark:text-green-400 mb-2"></i>
+                                        <p class="text-xs font-medium">Pantry</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Features Section -->
+            <div id="features" class="bg-gray-100 dark:bg-slate-900 py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                            Everything you need to run your home
+                        </h2>
+                        <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+                            A single dashboard for your finances and inventory.
+                        </p>
+                    </div>
+                    <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <!-- Feature 1 (Card with Image) -->
+                        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" alt="Subscription Tracker" class="feature-image">
+                            <div class="p-6 flex-1 flex flex-col">
+                                <h3 class="text-xl font-semibold mt-0">Subscription Tracker</h3>
+                                <p class="text-gray-500 dark:text-gray-400 mt-2 flex-1">
+                                    Never forget a renewal. Track all your subscriptions with smart reminders.
+                                </p>
+                            </div>
+                        </div>
+                        <!-- Feature 2 (Card with Image) -->
+                        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2022&q=80" alt="Bill Management" class="feature-image">
+                            <div class="p-6 flex-1 flex flex-col">
+                                <h3 class="text-xl font-semibold mt-0">Bill Management</h3>
+                                <p class="text-gray-500 dark:text-gray-400 mt-2 flex-1">
+                                    Log your monthly bills like electricity and internet. Mark them as paid.
+                                </p>
+                            </div>
+                        </div>
+                        <!-- Feature 3 (Card with Image) -->
+                        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <img src="https://media.istockphoto.com/id/2243027117/photo/stacks-of-one-hundred-dollar-bills-displayed-on-a-wooden-table.webp?a=1&b=1&s=612x612&w=0&k=20&c=d1Iz0nN58fvlGqgaSt_FfKEC-4OmInQPXMGt7UOaRm8=" alt="Expense Logging" class="feature-image">
+                            <div class="p-6 flex-1 flex flex-col">
+                                <h3 class="text-xl font-semibold mt-0">Expense Logging</h3>
+                                <p class="text-gray-500 dark:text-gray-400 mt-2 flex-1">
+                                    Keep an eye on one-time expenses like groceries, transport, and dining out.
+                                </p>
+                            </div>
+                        </div>
+                        <!-- Feature 4 (Card with Image) -->
+                        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <img src="https://images.unsplash.com/photo-1584473457409-ae5c91d7d8b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2067&q=80" alt="Pantry Manager" class="feature-image">
+                            <div class="p-6 flex-1 flex flex-col">
+                                <h3 class="text-xl font-semibold mt-0">Pantry Manager</h3>
+                                <p class="text-gray-500 dark:text-gray-400 mt-2 flex-1">
+                                    Track food expiration dates and reduce waste with our "WasteNot" feature.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testimonials Section -->
+            <div id="testimonials" class="bg-white dark:bg-slate-800 py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                            What Our Users Say
+                        </h2>
+                        <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+                            Join thousands of happy households using Home App.
+                        </p>
+                    </div>
+                    <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Testimonial 1 -->
+                        <div class="bg-gray-50 dark:bg-slate-700 p-6 rounded-lg shadow-md">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-300 font-bold text-lg">
+                                    S
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="font-semibold">Sarah Johnson</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Family of 4</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-300 italic">
+                                "Home App has completely transformed how we manage our household expenses. We've saved over ₹2000/month by identifying unused subscriptions!"
+                            </p>
+                        </div>
+                        <!-- Testimonial 2 -->
+                        <div class="bg-gray-50 dark:bg-slate-700 p-6 rounded-lg shadow-md">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-600 dark:text-green-300 font-bold text-lg">
+                                    R
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="font-semibold">Raj Patel</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Working Professional</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-300 italic">
+                                "The pantry management feature alone is worth it. No more expired food waste, and I always know what I need to buy at the grocery store."
+                            </p>
+                        </div>
+                        <!-- Testimonial 3 -->
+                        <div class="bg-gray-50 dark:bg-slate-700 p-6 rounded-lg shadow-md">
+                            <div class="flex items-center mb-4">
+                                <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-purple-600 dark:text-purple-300 font-bold text-lg">
+                                    M
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="font-semibold">Maria Garcia</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Small Business Owner</p>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-300 italic">
+                                "As someone who runs a business from home, keeping track of expenses was always a headache. Home App makes it so simple and intuitive."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Section -->
+            <div id="pricing" class="bg-gray-100 dark:bg-slate-900 py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                            Simple, Transparent Pricing
+                        </h2>
+                        <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+                            Choose the plan that works best for your household
+                        </p>
+                    </div>
+                    <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <!-- Free Plan -->
+                        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <div class="p-6 bg-blue-50 dark:bg-blue-900/30">
+                                <h3 class="text-xl font-semibold">Free</h3>
+                                <div class="mt-4 flex items-baseline">
+                                    <span class="text-4xl font-bold">₹0</span>
+                                    <span class="ml-1 text-gray-500 dark:text-gray-400">/month</span>
+                                </div>
+                            </div>
+                            <div class="p-6 flex-1">
+                                <ul class="space-y-4">
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Track up to 5 subscriptions</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Basic bill tracking</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Expense logging</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Pantry management</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="x" class="w-5 h-5 text-gray-400 mr-2"></i>
+                                        <span class="text-gray-500">Advanced analytics</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="x" class="w-5 h-5 text-gray-400 mr-2"></i>
+                                        <span class="text-gray-500">Priority support</span>
+                                    </li>
+                                </ul>
+                                <button class="mt-8 w-full py-2 px-4 border border-blue-600 rounded-md text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                    Get Started Free
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Premium Plan -->
+                        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden flex flex-col border-2 border-blue-500 relative">
+                            <div class="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-sm font-medium rounded-bl-lg">
+                                Most Popular
+                            </div>
+                            <div class="p-6 bg-blue-100 dark:bg-blue-900/50">
+                                <h3 class="text-xl font-semibold">Premium</h3>
+                                <div class="mt-4 flex items-baseline">
+                                    <span class="text-4xl font-bold">₹299</span>
+                                    <span class="ml-1 text-gray-500 dark:text-gray-400">/month</span>
+                                </div>
+                            </div>
+                            <div class="p-6 flex-1">
+                                <ul class="space-y-4">
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Unlimited subscriptions</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Advanced bill tracking</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Expense categorization</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Smart pantry alerts</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Advanced analytics</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Priority support</span>
+                                    </li>
+                                </ul>
+                                <button class="mt-8 w-full py-2 px-4 bg-blue-600 rounded-md text-white font-medium hover:bg-blue-700">
+                                    Start Premium Trial
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Pro Plan -->
+                        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden flex flex-col">
+                            <div class="p-6 bg-purple-50 dark:bg-purple-900/30">
+                                <h3 class="text-xl font-semibold">Pro</h3>
+                                <div class="mt-4 flex items-baseline">
+                                    <span class="text-4xl font-bold">₹599</span>
+                                    <span class="ml-1 text-gray-500 dark:text-gray-400">/month</span>
+                                </div>
+                            </div>
+                            <div class="p-6 flex-1">
+                                <ul class="space-y-4">
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Everything in Premium</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Multi-user access</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Custom reporting</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>API access</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>Dedicated account manager</span>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-green-500 mr-2"></i>
+                                        <span>24/7 phone support</span>
+                                    </li>
+                                </ul>
+                                <button class="mt-8 w-full py-2 px-4 border border-purple-600 rounded-md text-purple-600 dark:text-purple-400 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/30">
+                                    Contact Sales
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FAQ Section -->
+            <div id="faq" class="bg-white dark:bg-slate-800 py-20">
+                <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                            Frequently Asked Questions
+                        </h2>
+                        <p class="mt-4 text-xl text-gray-600 dark:text-gray-300">
+                            Everything you need to know about Home App
+                        </p>
+                    </div>
+                    <div class="mt-16 space-y-8">
+                        <!-- FAQ Item 1 -->
+                        <div class="faq-item">
+                            <div class="faq-question py-4 flex justify-between items-center">
+                                <h3 class="text-lg font-medium">How secure is my financial data?</h3>
+                                <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
+                            </div>
+                            <div class="faq-answer pb-4">
+                                <p class="text-gray-600 dark:text-gray-300">
+                                    We take security seriously. All your data is encrypted both in transit and at rest. We never store your actual banking credentials and use industry-standard security practices to protect your information.
+                                </p>
+                            </div>
+                        </div>
+                        <!-- FAQ Item 2 -->
+                        <div class="faq-item">
+                            <div class="faq-question py-4 flex justify-between items-center">
+                                <h3 class="text-lg font-medium">Can I use Home App on multiple devices?</h3>
+                                <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
+                            </div>
+                            <div class="faq-answer pb-4">
+                                <p class="text-gray-600 dark:text-gray-300">
+                                    Yes! Home App syncs across all your devices. You can access your dashboard from your computer, tablet, or smartphone. All your data is automatically synchronized in real-time.
+                                </p>
+                            </div>
+                        </div>
+                        <!-- FAQ Item 3 -->
+                        <div class="faq-item">
+                            <div class="faq-question py-4 flex justify-between items-center">
+                                <h3 class="text-lg font-medium">What happens if I cancel my subscription?</h3>
+                                <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
+                            </div>
+                            <div class="faq-answer pb-4">
+                                <p class="text-gray-600 dark:text-gray-300">
+                                    If you cancel your Premium or Pro subscription, you'll revert to the Free plan at the end of your billing cycle. You won't lose any data, but some advanced features will become unavailable.
+                                </p>
+                            </div>
+                        </div>
+                        <!-- FAQ Item 4 -->
+                        <div class="faq-item">
+                            <div class="faq-question py-4 flex justify-between items-center">
+                                <h3 class="text-lg font-medium">How does the pantry management feature work?</h3>
+                                <i data-lucide="chevron-down" class="w-5 h-5 transition-transform"></i>
+                            </div>
+                            <div class="faq-answer pb-4">
+                                <p class="text-gray-600 dark:text-gray-300">
+                                    Our pantry manager lets you track food items, their quantities, and expiration dates. You'll receive notifications when items are about to expire, helping reduce food waste and manage your grocery shopping more efficiently.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- About Section -->
+            <div id="about" class="bg-gray-100 dark:bg-slate-900 py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+                                About Home App
+                            </h2>
+                            <p class="mt-6 text-lg text-gray-600 dark:text-gray-300">
+                                Home App was founded in 2023 with a simple mission: to simplify household management for families and individuals. We believe that managing your home shouldn't be complicated or stressful.
+                            </p>
+                            <p class="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                                Our team of developers, designers, and financial experts have created an all-in-one solution that brings together subscription tracking, bill management, expense logging, and pantry management in one intuitive dashboard.
+                            </p>
+                            <div class="mt-8">
+                                <h3 class="text-xl font-semibold mb-4">Contact Us</h3>
+                                <form id="contactForm" class="space-y-4">
+                                    <div>
+                                        <label for="contact-name" class="block text-sm font-medium">Name</label>
+                                        <input type="text" id="contact-name" name="name" required class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                                    </div>
+                                    <div>
+                                        <label for="contact-email" class="block text-sm font-medium">Email</label>
+                                        <input type="email" id="contact-email" name="email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                                    </div>
+                                    <div>
+                                        <label for="contact-message" class="block text-sm font-medium">Message</label>
+                                        <textarea id="contact-message" name="message" rows="4" required class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700"></textarea>
+                                    </div>
+                                    <button type="submit" class="inline-flex justify-center items-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                                        Send Message
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        <div>
+                            <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80" alt="About Home App" class="rounded-lg shadow-lg">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <!-- Footer -->
+        <footer class="bg-white dark:bg-slate-800">
+            <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-center">
+                <p class="text-gray-500 dark:text-gray-400">
+                    &copy; 2025 Home App. All rights reserved.
+                </p>
+            </div>
+        </footer>
+    </div>
+    <!-- ======================= -->
+    <!-- LOGIN PAGE -->
+    <!-- ======================= -->
+    <div id="loginPage" class="hidden items-center justify-center min-h-full p-4">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-xl">
+            <div>
+                <h2 class="text-3xl font-bold text-center text-blue-600 dark:text-blue-400">Home App</h2>
+                <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-300">Sign in to your account</p>
+            </div>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="login-email" class="block text-sm font-medium">Email address</label>
+                    <input id="login-email" name="email" type="email" autocomplete="email" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium">Password</label>
+                    <input id="login-password" name="password" type="password" autocomplete="current-password" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                </div>
+                <div>
+                    <button type="submit"
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
+                        Sign in
+                    </button>
+                </div>
+            </form>
+            <p class="text-sm text-center text-gray-600 dark:text-gray-300">
+                Don't have an account?
+                <button id="goToSignup" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
+                    Sign up
+                </button>
+            </p>
+        </div>
+    </div>
+    <!-- ======================= -->
+    <!-- SIGN UP PAGE -->
+    <!-- ======================= -->
+    <div id="signupPage" class="hidden items-center justify-center min-h-full p-4">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-xl">
+            <div>
+                <h2 class="text-3xl font-bold text-center text-blue-600 dark:text-blue-400">Create Account</h2>
+                <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-300">Get started</p>
+            </div>
+            <form id="signupForm" class="space-y-6">
+                <div>
+                    <label for="signup-name" class="block text-sm font-medium">Full Name</label>
+                    <input id="signup-name" name="name" type="text" autocomplete="name" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                </div>
+                <div>
+                    <label for="signup-email" class="block text-sm font-medium">Email address</label>
+                    <input id="signup-email" name="email" type="email" autocomplete="email" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                </div>
+                <div>
+                    <label for="signup-password" class="block text-sm font-medium">Password</label>
+                    <input id="signup-password" name="password" type="password" autocomplete="new-password" required
+                           class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                </div>
+                <div>
+                    <button type="submit"
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
+                        Create Account
+                    </button>
+                </div>
+            </form>
+            <p class="text-sm text-center text-gray-600 dark:text-gray-300">
+                Already have an account?
+                <button id="goToLogin" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
+                    Sign in
+                </button>
+            </p>
+        </div>
+    </div>
+
+    <!-- ======================= -->
+    <!-- MAIN APP SHELL -->
+    <!-- ======================= -->
+    <div id="mainApp" class="hidden h-full">
+        <div class="flex h-full">
+            <!-- Sidebar -->
+            <nav id="sidebar" class="flex flex-col bg-white dark:bg-slate-800 shadow-lg w-64 h-full fixed z-30 lg:relative lg:translate-x-0 -translate-x-full">
+                <!-- Logo -->
+                <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-slate-700">
+                        <span class="text-2xl font-bold text-blue-600 dark:text-blue-400 flex items-center">
+                            <i data-lucide="home" class="w-7 h-7 mr-2"></i>
+                            Home App
+                        </span>
+                    <!-- Close (for mobile) -->
+                    <button id="closeSidebar" class="lg:hidden p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full" title="Close Menu">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- Navigation -->
+                <div class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+                    <a href="#" data-page="home" class="nav-link nav-active group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100"></i>
+                        Dashboard
+                    </a>
+                    <a href="#" data-page="subscription" class="nav-link group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                        <i data-lucide="wallet" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100"></i>
+                        Subscriptions
+                    </a>
+                    <a href="#" data-page="bills" class="nav-link group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                        <i data-lucide="receipt" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100"></i>
+                        Bills
+                    </a>
+                    <a href="#" data-page="expenses" class="nav-link group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                        <i data-lucide="shopping-cart" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100"></i>
+                        Expenses
+                    </a>
+                    <a href="#" data-page="pantry" class="nav-link group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                        <i data-lucide="scan-food" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100"></i>
+                        Pantry
+                    </a>
+                </div>
+
+                <!-- Footer Controls -->
+                <div class="p-4 border-t border-gray-200 dark:border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <button id="darkModeToggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700" title="Toggle Dark Mode">
+                            <i data-lucide="sun" class="w-5 h-5 dark:hidden"></i>
+                            <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+                        </button>
+                        <button id="logoutButton" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700" title="Logout">
+                            <i data-lucide="log-out" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <div class="flex-1 flex flex-col h-full overflow-hidden">
+                <!-- Top Bar (for mobile) -->
+                <header class="lg:hidden bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-10">
+                    <div class="flex justify-between items-center h-16 px-4">
+                        <button id="openSidebar" class="p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full" title="Open Menu">
+                            <i data-lucide="menu" class="w-6 h-6"></i>
+                        </button>
+                        <span id="pageTitle" class="text-xl font-bold text-blue-600 dark:text-blue-400">Dashboard</span>
+                        <!-- Notification bell placeholder -->
+                        <div class="relative">
+                            <button id="notificationToggle" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 relative" title="Notifications">
+                                <i data-lucide="bell" class="w-5 h-5"></i>
+                                <span id="notificationAlert" class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-800 hidden"></span>
+                            </button>
+                            <!-- Notification Panel -->
+                            <div id="notificationPanel" class="hidden absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl border dark:border-slate-700 z-50 overflow-hidden">
+                                <div class="p-3 font-semibold text-sm border-b dark:border-slate-700">Notifications</div>
+                                <div id="notificationList" class="max-h-64 overflow-y-auto custom-scrollbar">
+                                    <p class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No new notifications.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Page Content (scrollable) -->
+                <main id="pageContent" class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8">
+                    <!-- ======================= -->
+                    <!-- HOME PAGE (HUB) -->
+                    <!-- ======================= -->
+                    <div id="homePage" class="app-page">
+                        <h1 class="text-3xl font-semibold mb-6">Welcome, <span id="userName">User</span>!</h1>
+                        <!-- Budget Overview -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-semibold mb-4">Budget Overview</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Total Income -->
+                                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden">
+                                    <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Income" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                                    <div class="relative z-10">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">Total Income</p>
+                                                <p id="homeIncome" class="text-3xl font-bold text-green-600 dark:text-green-400">₹0.00</p>
+                                            </div>
+                                            <button id="openIncomeModal" class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400" title="Edit Income">
+                                                <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Total Expenses -->
+                                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden">
+                                    <img src="https://media.istockphoto.com/id/2245196577/photo/restaurant-bill-showing-total-payment-and-euro-currency.webp?a=1&b=1&s=612x612&w=0&k=20&c=U9SOoS6iXxLDm43YAU9ZJsC6R9z_GbvUhZsUqPCxRnw=" alt="Expenses" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                                    <div class="relative z-10">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Total Expenses</p>
+                                        <p id="homeExpenses" class="text-3xl font-bold text-red-600 dark:text-red-400">₹0.00</p>
+                                    </div>
+                                </div>
+                                <!-- Balance -->
+                                <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden">
+                                    <img src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Balance" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                                    <div class="relative z-10">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Remaining Balance</p>
+                                        <p id="homeBalance" class="text-3xl font-bold text-gray-700 dark:text-gray-200">₹0.00</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Upcoming Bills Section -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-semibold mb-4">Upcoming Bills</h2>
+                            <div id="upcomingBillsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Bills will be dynamically added here -->
+                                <div id="billsPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                    <p class="text-gray-500 dark:text-gray-400">No upcoming bills.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Expiring Pantry Items Section -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-semibold mb-4">Expiring Soon</h2>
+                            <div id="expiringItemsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Expiring items will be dynamically added here -->
+                                <div id="expiringPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                    <p class="text-gray-500 dark:text-gray-400">No items expiring soon.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Recent Expenses Section -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-semibold mb-4">Recent Expenses</h2>
+                            <div id="recentExpensesContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <!-- Recent expenses will be dynamically added here -->
+                                <div id="expensesPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                    <p class="text-gray-500 dark:text-gray-400">No recent expenses.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ================================== -->
+                    <!-- SUBSCRIPTION TRACKER PAGE -->
+                    <!-- ================================== -->
+                    <div id="subscriptionPage" class="app-page hidden relative">
+                        <!-- Page Header -->
+                        <h1 class="text-3xl font-semibold mb-6">Subscriptions</h1>
+
+                        <!-- Summary Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <!-- Total Monthly Spending -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md flex items-center space-x-4">
+                                <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300">
+                                    <i data-lucide="wallet" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Monthly Spending</p>
+                                    <p id="totalMonthly" class="text-2xl font-bold">₹0.00</p>
+                                </div>
+                            </div>
+                            <!-- Next Renewal -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md flex items-center space-x-4">
+                                <div class="p-3 rounded-full bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300">
+                                    <i data-lucide="calendar-clock" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Next Renewal</p>
+                                    <p id="nextRenewal" class="text-xl font-bold">No upcoming</p>
+                                </div>
+                            </div>
+                            <!-- Active Subscriptions -->
+                            <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md flex items-center space-x-4">
+                                <div class="p-3 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300">
+                                    <i data-lucide="check-circle" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Active Subs</p>
+                                    <p id="activeSubs" class="text-2xl font-bold">0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts & Analysis -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <!-- Pie Chart -->
+                            <div class="lg:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
+                                <h3 class="text-lg font-semibold mb-4">Expense by Category</h3>
+                                <div class="relative h-64">
+                                    <canvas id="categoryChart"></canvas>
+                                </div>
+                            </div>
+                            <!-- Cost Analysis -->
+                            <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
+                                <h3 class="text-lg font-semibold mb-4">Cost Analysis & Insights</h3>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center p-4 bg-gray-50 dark:bg-slate-700 rounded-md">
+                                        <p class="font-medium">Total Yearly Estimate</p>
+                                        <p id="totalYearly" class="text-xl font-bold text-blue-600 dark:text-blue-400">₹0.00</p>
+                                    </div>
+                                    <div class="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-md">
+                                        <i data-lucide="lightbulb" class="w-5 h-5 text-yellow-600 dark:text-yellow-300 flex-shrink-0 mt-1"></i>
+                                        <div>
+                                            <p class="font-semibold text-yellow-800 dark:text-yellow-200">Saving Suggestion</p>
+                                            <p id="savingsSuggestion" class="text-sm text-yellow-700 dark:text-yellow-300">
+                                                No suggestions available. Add subscriptions to get insights.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Line Chart -->
+                        <div class="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md mb-6">
+                            <h3 class="text-lg font-semibold mb-4">Monthly Spending Trend</h3>
+                            <div class="relative h-72">
+                                <canvas id="spendingTrendChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- My Subscriptions -->
+                        <div>
+                            <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                                <h2 class="text-2xl font-semibold">My Subscriptions</h2>
+                                <!-- NEW: Search & Filter -->
+                                <div class="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                                    <div class="relative w-full md:w-auto">
+                                        <input type="text" id="subSearchInput" placeholder="Search subscriptions..." class="pl-10 pr-4 py-2 w-full md:w-64 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700">
+                                        <i data-lucide="search" class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    </div>
+                                    <select id="subCategoryFilter" class="w-full md:w-auto border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 py-2 px-3">
+                                        <option value="all">All Categories</option>
+                                        <option>Streaming</option>
+                                        <option>Music</option>
+                                        <option>Gaming</option>
+                                        <option>Software</option>
+                                        <option>Cloud</option>
+                                        <option>Productivity</option>
+                                        <option>Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="subscriptionList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div id="subsPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                    <p class="text-gray-500 dark:text-gray-400">You haven't added any subscriptions yet.</p>
+                                    <p class="text-gray-500 dark:text-gray-400">Click the "+" button to get started!</p>
+                                </div>
+                                <div id="subsNoResults" class="hidden col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                    <p class="text-gray-500 dark:text-gray-400">No subscriptions match your search.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- NEW: Floating Action Button (FAB) -->
+                        <div class="absolute bottom-8 right-8 z-20">
+                            <div id="fabMenu" class="fab-menu flex flex-col items-center space-y-3 scale-0 origin-bottom-right">
+                                <!-- Smart Add -->
+                                <button id="openSmartAddModal" class="group relative flex items-center justify-center w-max bg-white dark:bg-slate-700 py-2 px-4 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Smart Add">
+                                    <span class="text-sm font-medium mr-2 text-gray-700 dark:text-gray-200">Smart Add</span>
+                                    <i data-lucide="sparkles" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+                                </button>
+                                <!-- Manual Add -->
+                                <button id="openAddModal" class="group relative flex items-center justify-center w-max bg-white dark:bg-slate-700 py-2 px-4 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors" title="Add Manually">
+                                    <span class="text-sm font-medium mr-2 text-gray-700 dark:text-gray-200">Add Manually</span>
+                                    <i data-lucide="edit-3" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+                                </button>
+                            </div>
+                            <button id="fabToggle" class="mt-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-full p-4 shadow-lg" title="Add Subscription">
+                                <i data-lucide="plus" class="w-6 h-6 transition-transform transform rotate-0"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ================================== -->
+                    <!-- PANTRY MANAGER PAGE -->
+                    <!-- ================================== -->
+                    <div id="pantryPage" class="app-page hidden relative">
+                        <!-- Header & Tabs -->
+                        <div class="sticky top-0 bg-gray-100 dark:bg-slate-900 z-10 pt-1 -mt-4">
+                            <h1 class="text-3xl font-semibold mb-4">Pantry</h1>
+                            <div class="bg-white dark:bg-slate-800 shadow-sm">
+                                <nav class="flex justify-around max-w-4xl mx-auto">
+                                    <button data-tab="fridge" class="pantry-tab-button tab-active flex-1 py-4 px-1 text-center border-b-4 text-sm font-medium border-blue-500 text-blue-600 dark:text-blue-400">
+                                        <i data-lucide="fridge" class="w-5 h-5 inline-block mb-1"></i>
+                                        <div>Fridge</div>
+                                    </button>
+                                    <button data-tab="pantry" class="pantry-tab-button flex-1 py-4 px-1 text-center border-b-4 text-sm font-medium border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-300">
+                                        <i data-lucide="archive" class="w-5 h-5 inline-block mb-1"></i>
+                                        <div>Pantry</div>
+                                    </button>
+                                    <button data-tab="freezer" class="pantry-tab-button flex-1 py-4 px-1 text-center border-b-4 text-sm font-medium border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-300">
+                                        <i data-lucide="snowflake" class="w-5 h-5 inline-block mb-1"></i>
+                                        <div>Freezer</div>
+                                    </button>
+                                </nav>
+                            </div>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div class="max-w-4xl mx-auto pt-6">
+                            <div id="itemListsContainer">
+                                <div id="fridgeList" class="pantry-tab-content grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                                <div id="pantryList" class="pantry-tab-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                                <div id="freezerList" class="pantry-tab-content hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                            </div>
+                            <div id="emptyPlaceholder" class="hidden col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                <p class="text-gray-500 dark:text-gray-400">This section is empty.</p>
+                                <p class="text-gray-500 dark:text-gray-400">Click the "+" button to add an item!</p>
+                            </div>
+                        </div>
+
+                        <!-- Floating Action Button -->
+                        <button id="openAddItemModal" class="absolute bottom-8 right-8 bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white rounded-full p-4 shadow-lg z-20" title="Add Pantry Item">
+                            <i data-lucide="plus" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+
+                    <!-- ================================== -->
+                    <!-- BILL TRACKER PAGE (NEW) -->
+                    <!-- ================================== -->
+                    <div id="billPage" class="app-page hidden relative">
+                        <div class="flex justify-between items-center mb-6">
+                            <h1 class="text-3xl font-semibold">Bills</h1>
+                            <button id="openAddBillModal" class="inline-flex items-center rounded-md border border-transparent bg-red-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600">
+                                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                                Add Bill
+                            </button>
+                        </div>
+                        <!-- Bill List -->
+                        <div id="billListContainer" class="space-y-4">
+                            <div id="billPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                <p class="text-gray-500 dark:text-gray-400">No bills added yet.</p>
+                            </div>
+                            <!-- Bill cards will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- ================================== -->
+                    <!-- EXPENSE TRACKER PAGE (NEW) -->
+                    <!-- ================================== -->
+                    <div id="expensePage" class="app-page hidden relative">
+                        <div class="flex justify-between items-center mb-6">
+                            <h1 class="text-3xl font-semibold">Expenses</h1>
+                            <button id="openAddExpenseModal" class="inline-flex items-center rounded-md border border-transparent bg-yellow-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600">
+                                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+                                Add Expense
+                            </button>
+                        </div>
+                        <!-- Expense List -->
+                        <div id="expenseListContainer" class="space-y-4">
+                            <div id="expensePlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                                <p class="text-gray-500 dark:text-gray-400">No expenses logged yet.</p>
+                            </div>
+                            <!-- Expense cards will be injected here -->
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+        <!-- Sidebar Overlay (for mobile) -->
+        <div id="sidebarOverlay" class="hidden lg:hidden fixed inset-0 bg-black/50 z-20"></div>
+    </div>
+
+
+    <!-- ======================= -->
+    <!-- MODALS (ALL) -->
+    <!-- ======================= -->
+
+    <!-- Subscription Add/Edit Modal -->
+    <div id="addSubscriptionModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b dark:border-slate-700">
+                <h2 id="subModalTitle" class="text-xl font-semibold">Add New Subscription</h2>
+                <button class="modal-close-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Close">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <form id="subscriptionForm" class="space-y-4" novalidate>
+                    <input type="hidden" id="sub-id" name="id">
+                    <input type="hidden" id="sub-icon" name="icon" value="wallet">
+
+                    <!-- Form Validation: Name -->
+                    <div>
+                        <label for="sub-name" class="block text-sm font-medium">Name</label>
+                        <input type="text" id="sub-name" name="name" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="e.g., Netflix, Spotify">
+                        <p id="sub-name-error" class="text-red-500 text-xs mt-1 hidden">Please enter a name.</p>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <!-- Form Validation: Price -->
+                        <div class="col-span-2">
+                            <label for="sub-price" class="block text-sm font-medium">Price</label>
+                            <input type="number" id="sub-price" name="price" step="0.01" min="0" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="149.00">
+                            <p id="sub-price-error" class="text-red-500 text-xs mt-1 hidden">Please enter a valid price (0 or more).</p>
+                        </div>
+                        <div>
+                            <label for="sub-currency" class="block text-sm font-medium">Currency</label>
+                            <select id="sub-currency" name="currency" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                                <option>₹</option>
+                                <option>$</option>
+                                <option>€</option>
+                                <option>£</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="sub-cycle" class="block text-sm font-medium">Billing Cycle</label>
+                            <select id="sub-cycle" name="cycle" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="onetime">One-Time</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="sub-next-due" class="block text-sm font-medium">Next Due Date</label>
+                            <input type="date" id="sub-next-due" name="nextDue" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="sub-category" class="block text-sm font-medium">Category</label>
+                        <select id="sub-category" name="category" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                            <option>Streaming</option>
+                            <option>Music</option>
+                            <option>Gaming</option>
+                            <option>Software</option>
+                            <option>Cloud</option>
+                            <option>Productivity</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="sub-payment" class="block text-sm font-medium">Payment Method</label>
+                        <select id="sub-payment" name="paymentMethod" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                            <option>Credit Card</option>
+                            <option>PayPal</option>
+                            <option>UPI</option>
+                            <option>Net Banking</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="sub-notes" class="block text-sm font-medium">Notes</label>
+                        <textarea id="sub-notes" name="notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="e.g., Student plan, shared with family..."></textarea>
+                    </div>
+                    <div>
+                        <label for="sub-receipt-url" class="block text-sm font-medium">Receipt URL (Optional)</label>
+                        <input type="url" id="sub-receipt-url" name="receiptUrl" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="https://invoice-link.com/...">
+                    </div>
+                    <div class="flex justify-end pt-4 space-x-3">
+                        <button type="button" id="deleteSubButton" class="hidden items-center rounded-md border border-red-300 bg-white py-2 px-4 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50 dark:bg-slate-700 dark:text-red-400 dark:border-red-500 dark:hover:bg-slate-600">
+                            Delete
+                        </button>
+                        <button type="submit" id="saveSubButton" class="inline-flex justify-center items-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600">
+                            Save Subscription
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- "Smart Add" Subscription Modal -->
+    <div id="smartAddModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b dark:border-slate-700">
+                <h2 class="text-xl font-semibold">Smart Add Subscription</h2>
+                <button class="modal-close-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Close">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Select a popular service to quickly add it. We'll pre-fill the details for you.</p>
+                <div id="smartAddGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Smart Add cards will be injected here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Pantry Add/Edit Modal -->
+    <div id="addItemModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b dark:border-slate-700">
+                <h2 id="itemModalTitle" class="text-xl font-semibold">Add New Item</h2>
+                <button class="modal-close-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Close">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <form id="itemForm" class="space-y-4">
+                    <input type="hidden" id="item-id" name="id">
+                    <div>
+                        <label for="item-name" class="block text-sm font-medium">Item Name</label>
+                        <input type="text" id="item-name" name="name" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="e.g., Milk, Eggs, Bread">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="item-location" class="block text-sm font-medium">Location</label>
+                            <select id="item-location" name="location" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                                <option value="fridge">Fridge</option>
+                                <option value="pantry">Pantry</option>
+                                <option value="freezer">Freezer</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="item-quantity" class="block text-sm font-medium">Quantity</label>
+                            <input type="text" id="item-quantity" name="quantity" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="e.g., 1 gallon, 12 count">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="item-expiry" class="block text-sm font-medium">Expiration Date</label>
+                        <input type="date" id="item-expiry" name="expiry" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                    </div>
+                    <div class="flex justify-end pt-4 space-x-3">
+                        <button type="submit" id="saveItemButton" class="inline-flex justify-center items-center rounded-md border border-transparent bg-green-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
+                            Save Item
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bill Add/Edit Modal -->
+    <div id="addBillModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b dark:border-slate-700">
+                <h2 id="billModalTitle" class="text-xl font-semibold">Add New Bill</h2>
+                <button class="modal-close-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Close">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <form id="billForm" class="space-y-4">
+                    <input type="hidden" id="bill-id" name="id">
+                    <div>
+                        <label for="bill-name" class="block text-sm font-medium">Bill Name</label>
+                        <input type="text" id="bill-name" name="name" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="e.g., Electricity, Internet">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="bill-amount" class="block text-sm font-medium">Amount</label>
+                            <input type="number" id="bill-amount" name="amount" step="0.01" min="0" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="1200.00">
+                        </div>
+                        <div>
+                            <label for="bill-due-date" class="block text-sm font-medium">Due Date</label>
+                            <input type="date" id="bill-due-date" name="dueDate" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="bill-status" class="block text-sm font-medium">Status</label>
+                        <select id="bill-status" name="status" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                            <option value="Unpaid">Unpaid</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end pt-4 space-x-3">
+                        <button type="button" id="deleteBillButton" class="hidden items-center rounded-md border border-red-300 bg-white py-2 px-4 text-sm font-medium text-red-600 shadow-sm hover:bg-red-50 dark:bg-slate-700 dark:text-red-400 dark:border-red-500 dark:hover:bg-slate-600">
+                            Delete
+                        </button>
+                        <button type="submit" id="saveBillButton" class="inline-flex justify-center items-center rounded-md border border-transparent bg-red-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600">
+                            Save Bill
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Add/Edit Modal -->
+    <div id="addExpenseModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b dark:border-slate-700">
+                <h2 id="expenseModalTitle" class="text-xl font-semibold">Add New Expense</h2>
+                <button class="modal-close-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Close">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <form id="expenseForm" class="space-y-4">
+                    <input type="hidden" id="expense-id" name="id">
+                    <div>
+                        <label for="expense-name" class="block text-sm font-medium">Expense Name</label>
+                        <input type="text" id="expense-name" name="name" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="e.g., Weekly Groceries, Petrol">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="expense-amount" class="block text-sm font-medium">Amount</label>
+                            <input type="number" id="expense-amount" name="amount" step="0.01" min="0" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="2500.00">
+                        </div>
+                        <div>
+                            <label for="expense-date" class="block text-sm font-medium">Date</label>
+                            <input type="date" id="expense-date" name="date" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="expense-category" class="block text-sm font-medium">Category</label>
+                        <select id="expense-category" name="category" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700">
+                            <option value="Grocery">Grocery</option>
+                            <option value="School Fees">School Fees</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Dining Out">Dining Out</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end pt-4 space-x-3">
+                        <button type="submit" id="saveExpenseButton" class="inline-flex justify-center items-center rounded-md border border-transparent bg-yellow-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600">
+                            Save Expense
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Income Modal -->
+    <div id="editIncomeModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-sm w-full">
+            <div class="flex justify-between items-center p-4 border-b dark:border-slate-700">
+                <h2 class="text-xl font-semibold">Set Monthly Income</h2>
+                <button class="modal-close-btn text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" title="Close">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="incomeForm" class="space-y-4">
+                    <div>
+                        <label for="monthly-income" class="block text-sm font-medium">Monthly Income (Salary)</label>
+                        <input type="number" id="monthly-income" name="income" step="0.01" min="0" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-slate-700" placeholder="50000.00">
+                    </div>
+                    <div class="flex justify-end pt-4">
+                        <button type="submit" id="saveIncomeButton" class="inline-flex justify-center items-center rounded-md border border-transparent bg-green-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">
+                            Save Income
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ======================= -->
+<!-- JAVASCRIPT LOGIC -->
+<!-- ======================= -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ========== API CONFIGURATION ==========
+      // Make sure this matches your Java backend base path.
+      // Example: if your Spring controllers are under "/api/**"
+      const API_BASE_URL = 'http://localhost:8080/api';
+
+      // ========== API SERVICE (FIXED) ==========
+      class ApiService {
+          static async request(endpoint, options = {}) {
+              const token = localStorage.getItem('authToken');
+
+              const {
+                  body,
+                  headers = {},
+                  method = 'GET',
+                  ...restOptions
+              } = options;
+
+              const fetchOptions = {
+                  method,
+                  headers: {
+                      // Only send JSON header if there is a body
+                      ...(body !== undefined && { 'Content-Type': 'application/json' }),
+                      ...(token && { 'Authorization': `Bearer ${token}` }),
+                      ...headers,
+                  },
+                  ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+                  ...restOptions,
+              };
+
+              try {
+                  const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
+
+                  if (!response.ok) {
+                      const errorText = await response.text().catch(() => '');
+                      throw new Error(`API Error ${response.status}: ${errorText}`);
+                  }
+
+                  // If no body or not JSON, just return null
+                  const contentType = response.headers.get('content-type') || '';
+                  if (
+                      response.status === 204 ||
+                      response.status === 205 ||
+                      !contentType.toLowerCase().includes('application/json')
+                  ) {
+                      return null;
+                  }
+
+                  return await response.json();
+              } catch (error) {
+                  console.error('API Request failed:', error);
+                  throw error;
+              }
+          }
+
+          // ---------- Auth ----------
+          static async login(email, password) {
+              return this.request('/auth/login', {
+                  method: 'POST',
+                  body: { email, password }
+              });
+          }
+
+          static async signup(name, email, password) {
+              return this.request('/auth/signup', {
+                  method: 'POST',
+                  body: { name, email, password }
+              });
+          }
+
+          // ---------- User ----------
+          static async getUser() {
+              return this.request('/user');
+          }
+
+          static async updateIncome(income) {
+              return this.request('/user', {
+                  method: 'PUT',
+                  body: { income: parseFloat(income) }
+              });
+          }
+
+          // ---------- Subscriptions ----------
+          static async getSubscriptions() {
+              return this.request('/subscriptions');
+          }
+
+          static async createSubscription(subscription) {
+              return this.request('/subscriptions', {
+                  method: 'POST',
+                  body: subscription
+              });
+          }
+
+          static async updateSubscription(subscription) {
+              return this.request('/subscriptions', {
+                  method: 'PUT',
+                  body: subscription
+              });
+          }
+
+          static async deleteSubscription(id) {
+              console.log('🔴 API: Deleting subscription ID:', id);
+              // Most REST APIs do not expect a body for DELETE
+              return this.request(`/subscriptions/${id}`, {
+                  method: 'DELETE'
+              });
+          }
+
+          // ---------- Bills ----------
+          static async getBills() {
+              return this.request('/bills');
+          }
+
+          static async createBill(bill) {
+              return this.request('/bills', {
+                  method: 'POST',
+                  body: bill
+              });
+          }
+
+          static async updateBill(bill) {
+              return this.request('/bills', {
+                  method: 'PUT',
+                  body: bill
+              });
+          }
+
+          static async markBillPaid(id) {
+              // Keep this as-is unless your backend uses a different endpoint
+              return this.request('/bills', {
+                  method: 'PUT',
+                  body: { id: parseInt(id) }
+              });
+          }
+
+          static async deleteBill(id) {
+              console.log('🔴 API: Deleting bill ID:', id);
+              return this.request(`/bills/${id}`, {
+                  method: 'DELETE'
+              });
+          }
+
+          // ---------- Expenses ----------
+          static async getExpenses() {
+              return this.request('/expenses');
+          }
+
+          static async createExpense(expense) {
+              return this.request('/expenses', {
+                  method: 'POST',
+                  body: expense
+              });
+          }
+
+          static async deleteExpense(id) {
+              console.log('🔴 API: Deleting expense ID:', id);
+              return this.request(`/expenses/${id}`, {
+                  method: 'DELETE'
+              });
+          }
+
+          // ---------- Pantry ----------
+          static async getPantryItems() {
+              return this.request('/pantry');
+          }
+
+          static async createPantryItem(item) {
+              return this.request('/pantry', {
+                  method: 'POST',
+                  body: item
+              });
+          }
+
+          static async deletePantryItem(id) {
+              console.log('🔴 API: Deleting pantry item ID:', id);
+              return this.request(`/pantry/${id}`, {
+                  method: 'DELETE'
+              });
+          }
+      }
+
+      // ========== UTILITY FUNCTIONS ==========
+      function showMessage(message, type = 'success') {
+          const messageEl = document.createElement('div');
+          messageEl.className = `api-message api-${type} fade-in`;
+          messageEl.textContent = message;
+          document.body.appendChild(messageEl);
+
+          setTimeout(() => {
+              messageEl.remove();
+          }, 3000);
+      }
+
+      function setLoading(loading = true) {
+          const app = document.getElementById('app');
+          if (loading) {
+              app.classList.add('api-loading');
+          } else {
+              app.classList.remove('api-loading');
+          }
+      }
+
+      // ========== ENHANCED AUTH HANDLERS ==========
+      async function handleLoginWithAPI(email, password) {
+          try {
+              setLoading(true);
+              const result = await ApiService.login(email, password);
+
+              // Store token and user info
+              localStorage.setItem('authToken', result.token);
+              localStorage.setItem('userName', result.name);
+              localStorage.setItem('userEmail', result.email);
+
+              showMessage('Login successful!', 'success');
+              return result;
+          } catch (error) {
+              showMessage('Login failed. Please check your credentials.', 'error');
+              throw error;
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      async function handleSignupWithAPI(name, email, password) {
+          try {
+              setLoading(true);
+              const result = await ApiService.signup(name, email, password);
+
+              // Store token and user info
+              localStorage.setItem('authToken', result.token);
+              localStorage.setItem('userName', result.name);
+              localStorage.setItem('userEmail', result.email);
+
+              showMessage('Account created successfully!', 'success');
+              return result;
+          } catch (error) {
+              showMessage('Signup failed. Please try again.', 'error');
+              throw error;
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      // ========== ENHANCED DATA LOADING ==========
+      async function loadAllData() {
+          try {
+              setLoading(true);
+
+              // Load user data
+              const userData = await ApiService.getUser();
+              document.getElementById('userName').textContent = userData.name;
+              if (userData.income) {
+                  totalIncome = userData.income;
+                  renderHomeDashboard();
+              }
+
+              // Load all other data
+              const [subscriptions, bills, expenses, pantryItems] = await Promise.all([
+                  ApiService.getSubscriptions(),
+                  ApiService.getBills(),
+                  ApiService.getExpenses(),
+                  ApiService.getPantryItems()
+              ]);
+
+              // Update your existing data arrays
+              allSubscriptions = subscriptions;
+              allBills = bills;
+              allExpenses = expenses;
+              allItems = pantryItems;
+
+              // Refresh UI
+              renderHomeDashboard();
+              renderSubscriptionList();
+              renderBills();
+              renderExpenses();
+              renderPantryItems();
+
+          } catch (error) {
+              showMessage('Failed to load data', 'error');
+              console.error('Data loading error:', error);
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      // ========== ENHANCED FORM HANDLERS ==========
+      async function handleSaveSubscriptionWithAPI(subscriptionData) {
+          try {
+              setLoading(true);
+              let result;
+
+              if (subscriptionData.id) {
+                  // Update existing
+                  result = await ApiService.updateSubscription(subscriptionData);
+                  showMessage('Subscription updated!', 'success');
+              } else {
+                  // Create new
+                  result = await ApiService.createSubscription(subscriptionData);
+                  showMessage('Subscription added!', 'success');
+              }
+
+              // Refresh data
+              await loadAllData();
+              return result;
+          } catch (error) {
+              showMessage('Failed to save subscription', 'error');
+              throw error;
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      // CORRECTED DELETE HANDLERS WITH DEBUG LOGGING
+      async function handleDeleteSubscriptionWithAPI(id) {
+          try {
+              console.log('🔴 DELETE: Starting delete for subscription ID:', id);
+              setLoading(true);
+              await ApiService.deleteSubscription(id);
+              console.log('✅ DELETE: Subscription deleted successfully');
+              showMessage('Subscription deleted!', 'success');
+              await loadAllData();
+          } catch (error) {
+              console.error('❌ DELETE: Failed to delete subscription:', error);
+              showMessage('Failed to delete subscription', 'error');
+              throw error;
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      // NEW: Bill deletion handler
+      async function handleDeleteBillWithAPI(id) {
+          try {
+              console.log('🔴 DELETE: Starting delete for bill ID:', id);
+              setLoading(true);
+              await ApiService.deleteBill(id);
+              console.log('✅ DELETE: Bill deleted successfully');
+              showMessage('Bill deleted!', 'success');
+              await loadAllData();
+          } catch (error) {
+              console.error('❌ DELETE: Failed to delete bill:', error);
+              showMessage('Failed to delete bill', 'error');
+              throw error;
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      async function handleDeleteExpenseWithAPI(id) {
+          try {
+              console.log('🔴 DELETE: Starting delete for expense ID:', id);
+              setLoading(true);
+              await ApiService.deleteExpense(id);
+              console.log('✅ DELETE: Expense deleted successfully');
+              showMessage('Expense deleted!', 'success');
+              await loadAllData();
+          } catch (error) {
+              console.error('❌ DELETE: Failed to delete expense:', error);
+              showMessage('Failed to delete expense', 'error');
+              throw error;
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      async function handleDeletePantryItemWithAPI(id) {
+          try {
+              console.log('🔴 DELETE: Starting delete for pantry item ID:', id);
+              setLoading(true);
+              await ApiService.deletePantryItem(id);
+              console.log('✅ DELETE: Pantry item deleted successfully');
+              showMessage('Item deleted!', 'success');
+              await loadAllData();
+          } catch (error) {
+              console.error('❌ DELETE: Failed to delete pantry item:', error);
+              showMessage('Failed to delete item', 'error');
+              throw error;
+          } finally {
+              setLoading(false);
+          }
+      }
+
+      // ========== INITIALIZATION ==========
+      function initializeAppWithAPI() {
+          // Check if user is logged in
+          const token = localStorage.getItem('authToken');
+          const userName = localStorage.getItem('userName');
+
+          if (token && userName) {
+              // User is logged in
+              document.getElementById('userName').textContent = userName;
+              showPage('main');
+              showAppPage('home');
+
+              // Load data from API
+              loadAllData();
+          } else {
+              // User not logged in
+              showPage('landing');
+          }
+      }
+
+      // --- GLOBAL ELEMENTS (Pages) ---
+      const pages = {
+          landing: document.getElementById('landingPage'),
+          login: document.getElementById('loginPage'),
+          signup: document.getElementById('signupPage'),
+          main: document.getElementById('mainApp'),
+      };
+      const appPages = {
+          home: document.getElementById('homePage'),
+          subscription: document.getElementById('subscriptionPage'),
+          pantry: document.getElementById('pantryPage'),
+          bills: document.getElementById('billPage'),
+          expenses: document.getElementById('expensePage'),
+      };
+      // --- GLOBAL ELEMENTS (Modals) ---
+      const modals = {
+          subscription: document.getElementById('addSubscriptionModal'),
+          smartAdd: document.getElementById('smartAddModal'),
+          pantry: document.getElementById('addItemModal'),
+          bill: document.getElementById('addBillModal'),
+          expense: document.getElementById('addExpenseModal'),
+          income: document.getElementById('editIncomeModal'),
+      };
+
+      // --- GLOBAL ELEMENTS (Navigation) ---
+      const goToSignupButton = document.getElementById('goToSignup');
+      const goToLoginButton = document.getElementById('goToLogin');
+
+      // Landing Page Buttons
+      const goToLoginFromLanding = document.getElementById('goToLoginFromLanding');
+      const goToSignupFromLanding = document.getElementById('goToSignupFromLanding');
+      const goToLoginFromLandingMobile = document.getElementById('goToLoginFromLandingMobile');
+      const goToSignupFromLandingMobile = document.getElementById('goToSignupFromLandingMobile');
+      const goToSignupFromLandingHero = document.getElementById('goToSignupFromLandingHero');
+      const modalCloseButtons = document.querySelectorAll('.modal-close-btn');
+      const navLinks = document.querySelectorAll('.nav-link');
+      const pageTitle = document.getElementById('pageTitle');
+      // --- GLOBAL ELEMENTS (Sidebar) ---
+      const sidebar = document.getElementById('sidebar');
+      const openSidebarButton = document.getElementById('openSidebar');
+      const closeSidebarButton = document.getElementById('closeSidebar');
+      const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+      // --- GLOBAL ELEMENTS (Auth) ---
+      const loginForm = document.getElementById('loginForm');
+      const signupForm = document.getElementById('signupForm');
+      const logoutButton = document.getElementById('logoutButton');
+      const userNameEl = document.getElementById('userName');
+      // --- GLOBAL ELEMENTS (Dark Mode) ---
+      const mainDarkModeToggle = document.getElementById('darkModeToggle');
+      const htmlEl = document.documentElement;
+
+      // --- NEW ELEMENTS ---
+      const loader = document.getElementById('loader');
+      const scrollToTopBtn = document.getElementById('scrollToTop');
+      const faqQuestions = document.querySelectorAll('.faq-question');
+      const contactForm = document.getElementById('contactForm');
+
+      // --- GLOBAL APP STATE (Mock Data) ---
+      let totalIncome = 50000;
+      let allSubscriptions = [
+          { id: 1, name: "Netflix", price: 149, currency: "₹", cycle: "monthly", nextDue: "2025-11-05", category: "Streaming", notes: "Basic Plan", paymentMethod: "Credit Card", receiptUrl: "", icon: "tv" },
+          { id: 2, name: "Spotify", price: 119, currency: "₹", cycle: "monthly", nextDue: "2025-11-12", category: "Music", notes: "Premium Individual", paymentMethod: "PayPal", receiptUrl: "https://example.com/receipt/123", icon: "music" },
+          { id: 3, name: "AWS", price: 500, currency: "₹", cycle: "monthly", nextDue: "2025-11-02", category: "Cloud", notes: "Free Tier Limit", paymentMethod: "Credit Card", receiptUrl: "", icon: "cloud" },
+          { id: 4, name: "Microsoft 365", price: 489, currency: "₹", cycle: "monthly", nextDue: "2025-11-20", category: "Productivity", notes: "", paymentMethod: "Credit Card", receiptUrl: "", icon: "layout-grid" },
+      ];
+      const predefinedSubscriptions = [
+          { name: 'Netflix', price: 149, category: 'Streaming', icon: 'tv' },
+          { name: 'Spotify', price: 119, category: 'Music', icon: 'music' },
+          { name: 'Amazon Prime', price: 299, category: 'Streaming', icon: 'shopping-cart' },
+          { name: 'Disney+ Hotstar', price: 299, category: 'Streaming', icon: 'film' },
+          { name: 'YouTube Premium', price: 129, category: 'Music', icon: 'youtube' },
+          { name: 'AWS', price: 500, category: 'Cloud', icon: 'cloud' },
+          { name: 'Adobe CC', price: 1500, category: 'Software', icon: 'pen-tool' },
+          { name: 'Microsoft 365', price: 489, category: 'Productivity', icon: 'layout-grid' },
+      ];
+
+      let allItems = [
+          { id: 1, name: "Milk", location: "fridge", quantity: "1 Gallon", expiry: new Date(Date.now() + 86400000).toISOString().split('T')[0] },
+          { id: 2, name: "Eggs", location: "fridge", quantity: "12 count", expiry: new Date(Date.now() + 3*86400000).toISOString().split('T')[0] },
+          { id: 4, name: "Canned Beans", location: "pantry", quantity: "3 cans", expiry: "2026-12-01" },
+      ];
+      let allBills = [
+          { id: 1, name: 'Electricity', amount: 1200, dueDate: '2025-11-10', status: 'Unpaid' },
+          { id: 2, name: 'Internet', amount: 599, dueDate: '2025-11-05', status: 'Paid' },
+      ];
+      let allExpenses = [
+          { id: 1, name: 'Weekly Groceries', amount: 2500, date: '2025-10-25', category: 'Grocery' },
+          { id: 2, name: 'Tution Fee', amount: 5000, date: '2025-10-20', category: 'School Fees' },
+          { id: 3, name: 'Petrol', amount: 1200, date: '2025-10-28', category: 'Transport' },
+      ];
+
+      // --- Chart variables ---
+      let categoryChart = null;
+      let spendingTrendChart = null;
+
+      // --- Today's Date ---
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
+
+      // --- NEW FEATURE INITIALIZATION ---
+      function initNewFeatures() {
+          // Loader
+          setTimeout(() => {
+              loader.classList.add('hidden');
+          }, 1500);
+
+          // Scroll to top button
+          window.addEventListener('scroll', () => {
+              if (window.pageYOffset > 300) {
+                  scrollToTopBtn.classList.add('visible');
+              } else {
+                  scrollToTopBtn.classList.remove('visible');
+              }
+          });
+
+          scrollToTopBtn.addEventListener('click', () => {
+              window.scrollTo({
+                  top: 0,
+                  behavior: 'smooth'
+              });
+          });
+
+          // FAQ accordion
+          faqQuestions.forEach(question => {
+              question.addEventListener('click', () => {
+                  const answer = question.nextElementSibling;
+                  const icon = question.querySelector('i');
+
+                  // Toggle the open class
+                  answer.classList.toggle('open');
+
+                  // Rotate the icon
+                  if (answer.classList.contains('open')) {
+                      icon.style.transform = 'rotate(180deg)';
+                  } else {
+                      icon.style.transform = 'rotate(0deg)';
+                  }
+              });
+          });
+
+          // Contact form
+          if (contactForm) {
+              contactForm.addEventListener('submit', (e) => {
+                  e.preventDefault();
+                  alert('Thank you for your message! We will get back to you soon.');
+                  contactForm.reset();
+              });
+          }
+
+          // Smooth scrolling for anchor links
+          document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+              anchor.addEventListener('click', function (e) {
+                  e.preventDefault();
+
+                  const targetId = this.getAttribute('href');
+                  if (targetId === '#') return;
+
+                  const targetElement = document.querySelector(targetId);
+                  if (targetElement) {
+                      targetElement.scrollIntoView({
+                          behavior: 'smooth'
+                      });
+                  }
+              });
+          });
+      }
+
+      // --- PAGE NAVIGATION ---
+      function showPage(pageId) {
+          // Hide all main pages
+          Object.values(pages).forEach(page => page.classList.add('hidden'));
+
+          // Show the requested main page
+          const pageToShow = pages[pageId];
+          if (pageToShow) {
+              pageToShow.classList.remove('hidden');
+              if(pageId === 'login' || pageId === 'signup') {
+                  pageToShow.classList.add('flex');
+              }
+              if(pageId === 'landing') {
+                  pageToShow.classList.add('flex'); // it's a flex-col
+              }
+              if(pageId === 'main') {
+                  pageToShow.classList.add('block'); // Main app shell
+              }
+          }
+          lucide.createIcons();
+      }
+
+      function showAppPage(pageId) {
+          // Hide all app pages
+          Object.values(appPages).forEach(page => page.classList.add('hidden'));
+
+          // Show the requested app page
+          const pageToShow = appPages[pageId];
+          if (pageToShow) {
+              pageToShow.classList.remove('hidden');
+          }
+
+          // Update nav links
+          navLinks.forEach(link => {
+              link.classList.toggle('nav-active', link.dataset.page === pageId);
+          });
+
+          // Update mobile page title
+          const activeLink = document.querySelector(`.nav-link[data-page="${pageId}"]`);
+          if (activeLink) {
+              pageTitle.textContent = activeLink.textContent.trim();
+          }
+
+          // Call the specific render function for the page
+          if (pageId === 'home') renderHomeDashboard();
+          if (pageId === 'subscription') loadDashboardData();
+          if (pageId === 'pantry') renderPantryItems();
+          if (pageId === 'bills') renderBills();
+          if (pageId === 'expenses') renderExpenses();
+          lucide.createIcons();
+      }
+
+      // --- DARK MODE ---
+      function applyDarkMode() {
+          if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              htmlEl.classList.add('dark');
+          } else {
+              htmlEl.classList.remove('dark');
+          }
+      }
+
+      // --- SIDEBAR ---
+      function toggleSidebar(show) {
+          if (show) {
+              sidebar.classList.remove('-translate-x-full');
+              sidebarOverlay.classList.remove('hidden');
+          } else {
+              sidebar.classList.add('-translate-x-full');
+              sidebarOverlay.classList.add('hidden');
+          }
+      }
+
+      // --- GLOBAL LISTENERS ---
+      function initGlobalListeners() {
+          mainDarkModeToggle.addEventListener('click', () => {
+              if (htmlEl.classList.contains('dark')) {
+                  htmlEl.classList.remove('dark');
+                  localStorage.theme = 'light';
+              } else {
+                  htmlEl.classList.add('dark');
+                  localStorage.theme = 'dark';
+              }
+              // Re-render all possible pages
+              renderHomeDashboard();
+              loadDashboardData();
+              renderBills();
+              renderExpenses();
+          });
+          // --- AUTH ---
+          // ENHANCED: Login form with API
+          loginForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const email = loginForm.querySelector('#login-email').value;
+              const password = loginForm.querySelector('#login-password').value;
+
+              try {
+                  const result = await handleLoginWithAPI(email, password);
+                  userNameEl.textContent = result.name;
+                  showPage('main');
+                  showAppPage('home');
+                  await loadAllData();
+              } catch (error) {
+                  // Login failed - error is already shown in handleLoginWithAPI
+              }
+          });
+
+          // ENHANCED: Signup form with API
+          signupForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const name = signupForm.querySelector('#signup-name').value;
+              const email = signupForm.querySelector('#signup-email').value;
+              const password = signupForm.querySelector('#signup-password').value;
+
+              try {
+                  const result = await handleSignupWithAPI(name, email, password);
+                  userNameEl.textContent = result.name;
+                  showPage('main');
+                  showAppPage('home');
+                  await loadAllData();
+              } catch (error) {
+                  // Signup failed - error is already shown in handleSignupWithAPI
+              }
+          });
+
+          logoutButton.addEventListener('click', () => {
+              // Clear local storage on logout
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('userName');
+              localStorage.removeItem('userEmail');
+
+              loginForm.reset();
+              signupForm.reset();
+              userNameEl.textContent = 'User'; // Reset username
+              showPage('landing'); // Go to landing
+          });
+
+          // --- GLOBAL NAVIGATION ---
+          goToSignupButton.addEventListener('click', () => showPage('signup'));
+          goToLoginButton.addEventListener('click', () => showPage('login'));
+
+          // Landing Page Listeners
+          goToLoginFromLanding.addEventListener('click', () => showPage('login'));
+          goToSignupFromLanding.addEventListener('click', () => showPage('signup'));
+          goToLoginFromLandingMobile.addEventListener('click', () => showPage('login'));
+          goToSignupFromLandingMobile.addEventListener('click', () => showPage('signup'));
+          goToSignupFromLandingHero.addEventListener('click', () => showPage('signup'));
+
+          navLinks.forEach(link => {
+              link.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  const pageId = link.dataset.page;
+                  showAppPage(pageId);
+                  toggleSidebar(false); // Close sidebar on mobile nav
+              });
+          });
+
+          // --- SIDEBAR ---
+          openSidebarButton.addEventListener('click', () => toggleSidebar(true));
+          closeSidebarButton.addEventListener('click', () => toggleSidebar(false));
+          sidebarOverlay.addEventListener('click', () => toggleSidebar(false));
+
+          // --- MODAL CLOSE ---
+          modalCloseButtons.forEach(btn => {
+              btn.addEventListener('click', () => {
+                  btn.closest('.fixed').classList.add('hidden');
+              });
+          });
+      }
+
+      // ===========================================
+      // === HOME DASHBOARD APP ====================
+      // ===========================================
+
+      // --- Elements ---
+      const homeIncomeEl = document.getElementById('homeIncome');
+      const homeExpensesEl = document.getElementById('homeExpenses');
+      const homeBalanceEl = document.getElementById('homeBalance');
+      const openIncomeModalBtn = document.getElementById('openIncomeModal');
+      const incomeForm = document.getElementById('incomeForm');
+      const monthlyIncomeInput = document.getElementById('monthly-income');
+      const upcomingBillsContainer = document.getElementById('upcomingBillsContainer');
+      const expiringItemsContainer = document.getElementById('expiringItemsContainer');
+      const recentExpensesContainer = document.getElementById('recentExpensesContainer');
+
+      function initHomeDashboardListeners() {
+          openIncomeModalBtn.addEventListener('click', () => {
+              monthlyIncomeInput.value = totalIncome;
+              modals.income.classList.remove('hidden');
+          });
+
+          // ENHANCED: Income form with API
+          incomeForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const income = parseFloat(monthlyIncomeInput.value) || 0;
+
+              try {
+                  await ApiService.updateIncome(income);
+                  totalIncome = income;
+                  renderHomeDashboard();
+                  modals.income.classList.add('hidden');
+                  showMessage('Income updated!', 'success');
+              } catch (error) {
+                  showMessage('Failed to update income', 'error');
+              }
+          });
+      }
+
+      function renderHomeDashboard() {
+          // 1. Calculate Expenses
+          let totalMonthlyExpense = 0;
+
+          // Subs
+          allSubscriptions.forEach(sub => {
+              if (sub.cycle === 'monthly') totalMonthlyExpense += sub.price;
+              else if (sub.cycle === 'yearly') totalMonthlyExpense += sub.price / 12;
+              else if (sub.cycle === 'quarterly') totalMonthlyExpense += sub.price / 3;
+          });
+
+          // Bills (assuming they are monthly)
+          allBills.forEach(bill => {
+              totalMonthlyExpense += bill.amount;
+          });
+
+          // Expenses (for current month)
+          const currentMonth = new Date().getMonth();
+          const currentYear = new Date().getFullYear();
+          allExpenses.forEach(exp => {
+              const expenseDate = new Date(exp.date);
+              if (expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear) {
+                  totalMonthlyExpense += exp.amount;
+              }
+          });
+
+          // NEW: Add pantry items as expenses (only if they were purchased this month)
+          const currentMonthPantryItems = allItems.filter(item => {
+              const itemDate = new Date(item.expiry);
+              return itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear;
+          });
+
+          const pantryExpenseEstimate = currentMonthPantryItems.length * 100; // ₹100 per item estimate
+          totalMonthlyExpense += pantryExpenseEstimate;
+
+          // 2. Calculate Balance
+          const balance = totalIncome - totalMonthlyExpense;
+
+          // 3. Update UI
+          homeIncomeEl.textContent = `₹${totalIncome.toFixed(2)}`;
+          homeExpensesEl.textContent = `₹${totalMonthlyExpense.toFixed(2)}`;
+          homeBalanceEl.textContent = `₹${balance.toFixed(2)}`;
+
+          if (balance < 0) {
+              homeBalanceEl.classList.remove('text-gray-700', 'dark:text-gray-200');
+              homeBalanceEl.classList.add('text-red-600', 'dark:text-red-400');
+          } else {
+              homeBalanceEl.classList.add('text-gray-700', 'dark:text-gray-200');
+              homeBalanceEl.classList.remove('text-red-600', 'dark:text-red-400');
+          }
+
+          // 4. Render dynamic sections
+          renderUpcomingBills();
+          renderExpiringItems();
+          renderRecentExpenses();
+      }
+
+      function renderUpcomingBills() {
+          upcomingBillsContainer.innerHTML = '';
+
+          // Get upcoming bills (unpaid and due within the next 30 days)
+          const today = new Date();
+          const next30Days = new Date();
+          next30Days.setDate(today.getDate() + 30);
+
+          const upcomingBills = allBills.filter(bill => {
+              const dueDate = new Date(bill.dueDate);
+              return bill.status === 'Unpaid' && dueDate >= today && dueDate <= next30Days;
+          });
+
+          if (upcomingBills.length === 0) {
+              upcomingBillsContainer.innerHTML = `
+                  <div id="billsPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                      <p class="text-gray-500 dark:text-gray-400">No upcoming bills.</p>
+                  </div>
+              `;
+              return;
+          }
+
+          // Sort by due date
+          upcomingBills.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+          // Render bills
+          upcomingBills.forEach(bill => {
+              const billCard = document.createElement('div');
+              billCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
+              billCard.innerHTML = `
+                  <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="${bill.name} Bill" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                  <div class="relative z-10">
+                      <h3 class="text-lg font-semibold">${bill.name}</h3>
+                      <p class="text-xl font-bold text-red-600 dark:text-red-400">₹${bill.amount.toFixed(2)}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Due: ${new Date(bill.dueDate).toLocaleDateString()}</p>
+                  </div>
+              `;
+              upcomingBillsContainer.appendChild(billCard);
+          });
+      }
+
+      function renderExpiringItems() {
+          expiringItemsContainer.innerHTML = '';
+
+          // Get items expiring within the next 7 days
+          const today = new Date();
+          const next7Days = new Date();
+          next7Days.setDate(today.getDate() + 7);
+
+          const expiringItems = allItems.filter(item => {
+              const expiryDate = new Date(item.expiry);
+              return expiryDate >= today && expiryDate <= next7Days;
+          });
+
+          if (expiringItems.length === 0) {
+              expiringItemsContainer.innerHTML = `
+                  <div id="expiringPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                      <p class="text-gray-500 dark:text-gray-400">No items expiring soon.</p>
+                  </div>
+              `;
+              return;
+          }
+
+          // Sort by expiry date
+          expiringItems.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+
+          // Render items
+          expiringItems.forEach(item => {
+              const expiryDate = new Date(item.expiry);
+              const daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+
+              const itemCard = document.createElement('div');
+              itemCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
+              itemCard.innerHTML = `
+                  <img src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bWlsa3xlbnwwfHwwfHx8MA%3D%3D" alt="${item.name}" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                  <div class="relative z-10">
+                      <h3 class="text-lg font-semibold">${item.name}</h3>
+                      <p class="text-sm ${daysLeft <= 1 ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}">Expires in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">${item.quantity}</p>
+                  </div>
+              `;
+              expiringItemsContainer.appendChild(itemCard);
+          });
+      }
+
+      function renderRecentExpenses() {
+          recentExpensesContainer.innerHTML = '';
+
+          // Get recent expenses (last 5)
+          const recentExpenses = [...allExpenses]
+              .sort((a, b) => new Date(b.date) - new Date(a.date))
+              .slice(0, 5);
+
+          if (recentExpenses.length === 0) {
+              recentExpensesContainer.innerHTML = `
+                  <div id="expensesPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                      <p class="text-gray-500 dark:text-gray-400">No recent expenses.</p>
+                  </div>
+              `;
+              return;
+          }
+
+          // Render expenses
+          recentExpenses.forEach(expense => {
+              const expenseCard = document.createElement('div');
+              expenseCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
+
+              // Select appropriate image based on category
+              let imageUrl = 'https://plus.unsplash.com/premium_photo-1741657668295-86ed0b179d08?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8d2Vla2x5JTIwZ3JvY2VyaWVzfGVufDB8fDB8fHww';
+              if (expense.category === 'Transport') {
+                  imageUrl = 'https://images.unsplash.com/photo-1709536240401-ae8f6ca55e18?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGV0cm9sfGVufDB8fDB8fHww';
+              } else if (expense.category === 'School Fees') {
+                  imageUrl = 'https://media.istockphoto.com/id/1235608919/photo/children-girls-and-boys-sitting-and-reading-books-group-study-stock-photo.webp?a=1&b=1&s=612x612&w=0&k=20&c=a2eQkiYw-SZ_yoNSdaQRiiwU0TnaqtUl3TPZYyjK9qY=';
+              }
+
+              expenseCard.innerHTML = `
+                  <img src="${imageUrl}" alt="${expense.name}" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                  <div class="relative z-10">
+                      <h3 class="text-lg font-semibold">${expense.name}</h3>
+                      <p class="text-xl font-bold text-yellow-600 dark:text-yellow-400">₹${expense.amount.toFixed(2)}</p>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">${new Date(expense.date).toLocaleDateString()}</p>
+                      <span class="inline-block mt-2 text-xs font-semibold px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full">${expense.category}</span>
+                  </div>
+              `;
+              recentExpensesContainer.appendChild(expenseCard);
+          });
+      }
+
+      // ===========================================
+      // === SUBSCRIPTION TRACKER APP ==============
+      // ===========================================
+
+      // --- Elements ---
+      const totalMonthlyEl = document.getElementById('totalMonthly');
+      const nextRenewalEl = document.getElementById('nextRenewal');
+      const activeSubsEl = document.getElementById('activeSubs');
+      const totalYearlyEl = document.getElementById('totalYearly');
+      const savingsSuggestionEl = document.getElementById('savingsSuggestion');
+      const subscriptionListEl = document.getElementById('subscriptionList');
+      const subsPlaceholderEl = document.getElementById('subsPlaceholder');
+      const subsNoResultsEl = document.getElementById('subsNoResults');
+      const notificationToggle = document.getElementById('notificationToggle');
+      const notificationPanel = document.getElementById('notificationPanel');
+      const notificationList = document.getElementById('notificationList');
+      const notificationAlert = document.getElementById('notificationAlert');
+      const openSubModalButton = document.getElementById('openAddModal');
+      const subscriptionForm = document.getElementById('subscriptionForm');
+      const subModalTitle = document.getElementById('subModalTitle');
+      const deleteSubButton = document.getElementById('deleteSubButton');
+      const chartCanvas = document.getElementById('categoryChart').getContext('2d');
+      const trendChartCanvas = document.getElementById('spendingTrendChart').getContext('2d');
+      const openSmartAddModalButton = document.getElementById('openSmartAddModal');
+      const smartAddGrid = document.getElementById('smartAddGrid');
+
+      // FAB Elements
+      const fabToggle = document.getElementById('fabToggle');
+      const fabMenu = document.getElementById('fabMenu');
+      const fabIcon = fabToggle.querySelector('i');
+
+      // Search/Filter Elements
+      const subSearchInput = document.getElementById('subSearchInput');
+      const subCategoryFilter = document.getElementById('subCategoryFilter');
+
+      // Form Validation Elements
+      const subNameInput = document.getElementById('sub-name');
+      const subPriceInput = document.getElementById('sub-price');
+      const subNameError = document.getElementById('sub-name-error');
+      const subPriceError = document.getElementById('sub-price-error');
+
+      function initSubscriptionListeners() {
+          openSubModalButton.addEventListener('click', () => {
+              openSubscriptionModal();
+              toggleFab(false);
+          });
+          openSmartAddModalButton.addEventListener('click', () => {
+              openSmartAddModal();
+              toggleFab(false);
+          });
+
+          // ENHANCED: Subscription form with API
+          subscriptionForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              // Run validation
+              if (!validateSubForm()) {
+                  return;
+              }
+
+              const formData = new FormData(subscriptionForm);
+              const sub = Object.fromEntries(formData.entries());
+              sub.price = parseFloat(sub.price);
+
+              try {
+                  await handleSaveSubscriptionWithAPI(sub);
+                  modals.subscription.classList.add('hidden');
+              } catch (error) {
+                  // Error is already shown in handleSaveSubscriptionWithAPI
+              }
+          });
+
+          // ENHANCED: Delete subscription with API
+          deleteSubButton.addEventListener('click', async () => {
+              const subId = document.getElementById('sub-id').value;
+              if (!subId) return;
+
+              try {
+                  await handleDeleteSubscriptionWithAPI(subId);
+                  modals.subscription.classList.add('hidden');
+              } catch (error) {
+                  // Error is already shown in handleDeleteSubscriptionWithAPI
+              }
+          });
+
+          notificationToggle.addEventListener('click', (e) => { e.stopPropagation(); notificationPanel.classList.toggle('hidden'); });
+
+          document.addEventListener('click', (e) => {
+              if (notificationPanel && !notificationPanel.classList.contains('hidden')) {
+                  if (!notificationPanel.contains(e.target) && e.target !== notificationToggle && !notificationToggle.contains(e.target)) {
+                      notificationPanel.classList.add('hidden');
+                  }
+              }
+
+              // Close FAB menu if clicking outside
+              if (fabMenu && !fabMenu.classList.contains('scale-0')) {
+                  if (!fabMenu.contains(e.target) && !fabToggle.contains(e.target)) {
+                      toggleFab(false);
+                  }
+              }
+          });
+
+          // FAB Listener
+          fabToggle.addEventListener('click', () => {
+              toggleFab(fabMenu.classList.contains('scale-0'));
+          });
+
+          // Search/Filter Listeners
+          subSearchInput.addEventListener('input', renderSubscriptionList);
+          subCategoryFilter.addEventListener('change', renderSubscriptionList);
+
+          // Form Validation Listeners
+          subNameInput.addEventListener('input', () => validateSubForm());
+          subPriceInput.addEventListener('input', () => validateSubForm());
+      }
+
+      function toggleFab(show) {
+          if (show) {
+              fabMenu.classList.remove('scale-0');
+              fabIcon.classList.add('rotate-45');
+          } else {
+              fabMenu.classList.add('scale-0');
+              fabIcon.classList.remove('rotate-45');
+          }
+      }
+
+      // Form Validation
+      function validateSubForm() {
+          let isValid = true;
+
+          // Validate Name
+          if (subNameInput.value.trim() === '') {
+              subNameError.classList.remove('hidden');
+              subNameInput.classList.add('border-red-500');
+              isValid = false;
+          } else {
+              subNameError.classList.add('hidden');
+              subNameInput.classList.remove('border-red-500');
+          }
+
+          // Validate Price
+          if (subPriceInput.value === '' || parseFloat(subPriceInput.value) < 0) {
+              subPriceError.classList.remove('hidden');
+              subPriceInput.classList.add('border-red-500');
+              isValid = false;
+          } else {
+              subPriceError.classList.add('hidden');
+              subPriceInput.classList.remove('border-red-500');
+          }
+
+          return isValid;
+      }
+
+      function resetSubFormValidation() {
+          subNameError.classList.add('hidden');
+          subNameInput.classList.remove('border-red-500');
+          subPriceError.classList.add('hidden');
+          subPriceInput.classList.remove('border-red-500');
+      }
+
+      function loadDashboardData() {
+          const summary = calculateSummary(allSubscriptions);
+          updateDashboardUI(summary);
+          renderSubscriptionList();
+      }
+
+      // Separate function to render the list based on filters
+      function renderSubscriptionList() {
+          const searchTerm = subSearchInput.value.toLowerCase();
+          const category = subCategoryFilter.value;
+
+          const filteredSubs = allSubscriptions.filter(sub => {
+              const nameMatch = sub.name.toLowerCase().includes(searchTerm);
+              const categoryMatch = (category === 'all' || sub.category === category);
+              return nameMatch && categoryMatch;
+          });
+
+          subscriptionListEl.innerHTML = '';
+
+          if (allSubscriptions.length === 0) {
+              subscriptionListEl.appendChild(subsPlaceholderEl);
+              subsPlaceholderEl.classList.remove('hidden');
+              subsNoResultsEl.classList.add('hidden');
+          } else if (filteredSubs.length === 0) {
+              subscriptionListEl.appendChild(subsNoResultsEl);
+              subsNoResultsEl.classList.remove('hidden');
+              subsPlaceholderEl.classList.add('hidden');
+          } else {
+              subsPlaceholderEl.classList.add('hidden');
+              subsNoResultsEl.classList.add('hidden');
+              filteredSubs.sort((a,b) => new Date(a.nextDue) - new Date(b.nextDue));
+              filteredSubs.forEach(sub => subscriptionListEl.appendChild(createSubscriptionCard(sub)));
+          }
+          lucide.createIcons();
+      }
+
+      function createOrUpdateChart(categories, data) {
+          const isDark = htmlEl.classList.contains('dark');
+          const labelColor = isDark ? '#cbd5e1' : '#475569';
+          if (categoryChart) categoryChart.destroy();
+          if (data.length === 0 || data.every(item => item === 0)) {
+              categories = ['No Data']; data = [1];
+          }
+          categoryChart = new Chart(chartCanvas, {
+              type: 'pie',
+              data: {
+                  labels: categories,
+                  datasets: [{
+                      data: data,
+                      backgroundColor: ['#2563eb', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'],
+                      borderColor: isDark ? '#1e293b' : '#ffffff', borderWidth: 2,
+                  }]
+              },
+              options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { position: 'bottom', labels: { color: labelColor, font: { family: "'Inter', sans-serif" }}}}
+              }
+          });
+      }
+
+      function createOrUpdateLineChart(labels, data) {
+          const isDark = htmlEl.classList.contains('dark');
+          const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+          const labelColor = isDark ? '#cbd5e1' : '#475569';
+          if (spendingTrendChart) spendingTrendChart.destroy();
+          spendingTrendChart = new Chart(trendChartCanvas, {
+              type: 'line',
+              data: {
+                  labels: labels,
+                  datasets: [{
+                      label: 'Monthly Spending', data: data, fill: false, borderColor: '#2563eb',
+                      tension: 0.1, pointBackgroundColor: '#2563eb', pointRadius: 4,
+                  }]
+              },
+              options: {
+                  responsive: true, maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                      y: { beginAtZero: true, ticks: { color: labelColor, callback: (v) => '₹' + v }, grid: { color: gridColor } },
+                      x: { ticks: { color: labelColor }, grid: { color: gridColor } }
+                  }
+              }
+          });
+      }
+
+      function calculateSummary(subs) {
+          let totalMonthly = 0, nextRenewalDate = null, nextRenewalName = "N/A", activeCount = 0, totalYearly = 0;
+          const categoryTotals = {};
+          const today = new Date(); today.setHours(0,0,0,0);
+          subs.forEach(sub => {
+              const nextDue = new Date(sub.nextDue);
+              if (sub.cycle !== 'onetime' && nextDue >= today) activeCount++;
+              if (nextDue >= today && (nextRenewalDate === null || nextDue < nextRenewalDate)) {
+                  nextRenewalDate = nextDue; nextRenewalName = sub.name;
+              }
+              let monthlyCost = 0, yearlyCost = 0;
+              if(sub.cycle === 'monthly') { monthlyCost = sub.price; yearlyCost = sub.price * 12; }
+              else if (sub.cycle === 'yearly') { monthlyCost = sub.price / 12; yearlyCost = sub.price; }
+              else if (sub.cycle === 'quarterly') { monthlyCost = sub.price / 3; yearlyCost = sub.price * 4; }
+              totalMonthly += monthlyCost; totalYearly += yearlyCost;
+              categoryTotals[sub.category] = (categoryTotals[sub.category] || 0) + yearlyCost;
+          });
+          const nextRenewalText = nextRenewalDate ? `${nextRenewalName} (${nextRenewalDate.toLocaleDateString()})` : "No upcoming";
+          return {
+              totalMonthly: totalMonthly.toFixed(2), totalYearly: totalYearly.toFixed(2), activeCount, nextRenewalText,
+              categoryLabels: Object.keys(categoryTotals), categoryData: Object.values(categoryTotals)
+          };
+      }
+
+      function updateDashboardUI(summary) {
+          totalMonthlyEl.textContent = `₹${summary.totalMonthly}`;
+          totalYearlyEl.textContent = `₹${summary.totalYearly}`;
+          activeSubsEl.textContent = summary.activeCount;
+          nextRenewalEl.textContent = summary.nextRenewalText;
+          if (summary.totalMonthly > 5000) savingsSuggestionEl.textContent = `Review 'Software' and 'Streaming' categories for savings.`;
+          else if (allSubscriptions.length > 5) savingsSuggestionEl.textContent = `You have ${allSubscriptions.length} subscriptions. Review and cancel any unused ones.`;
+          else savingsSuggestionEl.textContent = "Your spending looks great!";
+
+          createOrUpdateChart(summary.categoryLabels, summary.categoryData);
+          const trendLabels = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+          const trendData = [550.50, 600.20, 750.00, 700.00, 800.75, summary.totalMonthly];
+          createOrUpdateLineChart(trendLabels, trendData);
+          updateNotificationPanel(allSubscriptions);
+      }
+
+      function createSubscriptionCard(sub) {
+          const card = document.createElement('div');
+          card.className = 'sub-card bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col justify-between overflow-hidden';
+          const today = new Date(); today.setHours(0,0,0,0);
+          const nextDue = new Date(sub.nextDue);
+          const daysLeft = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+          let statusColor = 'text-green-600 dark:text-green-400', statusText = `Renews in ${daysLeft} days`, borderColor = 'border-green-500';
+          if (daysLeft < 0) { statusColor = 'text-gray-500 dark:text-gray-400'; statusText = 'Expired'; borderColor = 'border-gray-400'; }
+          else if (daysLeft <= 5) { statusColor = 'text-orange-600 dark:text-orange-400'; statusText = `Renews in ${daysLeft} days!`; borderColor = 'border-orange-500'; }
+          if (sub.cycle === 'onetime') { statusColor = 'text-blue-600 dark:text-blue-400'; statusText = 'One-time purchase'; borderColor = 'border-blue-500'; }
+
+          card.innerHTML = `
+              <div class="p-5">
+              <div class="flex justify-between items-start mb-2">
+                  <div class="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full">
+                      <i data-lucide="${sub.icon || 'wallet'}" class="w-6 h-6"></i>
+                  </div>
+                  <span class="font-bold text-xl">${sub.currency}${sub.price}</span>
+              </div>
+              <h4 class="text-lg font-semibold truncate mt-3">${sub.name}</h4>
+              <p class="text-sm ${statusColor} font-medium">${statusText}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Billed ${sub.cycle}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1"><i data-lucide="credit-card" class="w-4 h-4 mr-2 flex-shrink-0"></i> ${sub.paymentMethod || 'No method'}</p>
+              ${sub.notes ? `<div class="mt-2 p-2 bg-gray-50 dark:bg-slate-700 rounded-md"><p class="text-xs text-gray-600 dark:text-gray-300 italic">${sub.notes}</p></div>` : ''}
+              ${sub.receiptUrl ? `<div class="mt-2"><a href="${sub.receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i> View Receipt</a></div>` : ''}
+          </div>
+          <button data-id="${sub.id}" class="edit-sub-btn w-full text-center text-sm font-medium text-blue-600 dark:text-blue-400 p-3 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+              View / Edit
+          </button>`;
+
+          card.style.borderTop = `4px solid var(--tw-color)`;
+          card.style.borderColor = borderColor.split('-')[1] === 'gray' ? '#9ca3af' :
+                                  borderColor.split('-')[1] === 'orange' ? '#f97316' :
+                                  borderColor.split('-')[1] === 'blue' ? '#3b82f6' : '#22c55e';
+
+          const editBtn = card.querySelector('.edit-sub-btn');
+          if (editBtn) {
+              editBtn.addEventListener('click', () => openSubscriptionModal(allSubscriptions.find(s => s.id === parseInt(sub.id)) ));
+          }
+          return card;
+      }
+
+      function openSubscriptionModal(sub = null) {
+          subscriptionForm.reset();
+          resetSubFormValidation();
+
+          if (sub) {
+              subModalTitle.textContent = sub.id ? "Edit Subscription" : "Add New Subscription";
+              deleteSubButton.classList.toggle('hidden', !sub.id);
+
+              document.getElementById('sub-id').value = sub.id || "";
+              document.getElementById('sub-name').value = sub.name || "";
+              document.getElementById('sub-price').value = sub.price || "";
+              document.getElementById('sub-currency').value = sub.currency || "₹";
+              document.getElementById('sub-cycle').value = sub.cycle || "monthly";
+              document.getElementById('sub-next-due').value = sub.nextDue || todayString;
+              document.getElementById('sub-category').value = sub.category || "Other";
+              document.getElementById('sub-payment').value = sub.paymentMethod || 'Other';
+              document.getElementById('sub-notes').value = sub.notes || "";
+              document.getElementById('sub-receipt-url').value = sub.receiptUrl || '';
+              document.getElementById('sub-icon').value = sub.icon || 'wallet';
+          } else {
+              subModalTitle.textContent = "Add New Subscription";
+              deleteSubButton.classList.add('hidden');
+              document.getElementById('sub-id').value = "";
+              document.getElementById('sub-next-due').value = todayString;
+              document.getElementById('sub-icon').value = "wallet";
+          }
+          modals.subscription.classList.remove('hidden');
+      }
+
+      function openSmartAddModal() {
+          smartAddGrid.innerHTML = '';
+          predefinedSubscriptions.forEach(sub => {
+              const card = document.createElement('button');
+              card.className = "group text-left p-4 bg-white dark:bg-slate-700 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition-all";
+              card.innerHTML = `
+                  <div class="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full w-10 h-10 flex items-center justify-center">
+                      <i data-lucide="${sub.icon}" class="w-5 h-5"></i>
+                  </div>
+                  <h4 class="font-semibold mt-3 truncate">${sub.name}</h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">₹${sub.price}/mo</p>
+              `;
+              card.addEventListener('click', () => {
+                  openSubscriptionModal({
+                      ...sub,
+                      nextDue: todayString,
+                      currency: "₹",
+                      cycle: "monthly"
+                  });
+                  modals.smartAdd.classList.add('hidden');
+              });
+              smartAddGrid.appendChild(card);
+          });
+          lucide.createIcons();
+          modals.smartAdd.classList.remove('hidden');
+      }
+
+      function updateNotificationPanel(subs) {
+          notificationList.innerHTML = ''; let notificationsFound = false;
+          const today = new Date(); today.setHours(0,0,0,0);
+          subs.forEach(sub => {
+              const nextDue = new Date(sub.nextDue);
+              const daysLeft = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              if (daysLeft >= 0 && daysLeft <= 5) {
+                  notificationsFound = true;
+                  const li = document.createElement('div');
+                  li.className = 'p-3 hover:bg-gray-50 dark:hover:bg-slate-700 border-b dark:border-slate-700 last:border-b-0 cursor-pointer';
+                  li.innerHTML = `<p class="text-sm font-medium">${sub.name} is renewing soon!</p><p class="text-xs text-gray-500 dark:text-gray-400">${sub.currency}${sub.price} is due in ${daysLeft === 0 ? 'today' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`}.</p>`;
+                  li.addEventListener('click', () => {
+                      showAppPage('subscription');
+                      openSubscriptionModal(sub);
+                      notificationPanel.classList.add('hidden');
+                  });
+                  notificationList.appendChild(li);
+              }
+          });
+          if (!notificationsFound) {
+              notificationAlert.classList.add('hidden');
+              notificationList.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No new notifications.</p>';
+          } else { notificationAlert.classList.remove('hidden'); }
+      }
+
+      // ===========================================
+      // === PANTRY MANAGER APP ====================
+      // ===========================================
+
+      // --- Elements ---
+      const pantryTabButtons = document.querySelectorAll('.pantry-tab-button');
+      const pantryTabContents = document.querySelectorAll('.pantry-tab-content');
+      const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+      const listsContainer = document.getElementById('itemListsContainer');
+      const openItemModalButton = document.getElementById('openAddItemModal');
+      const itemForm = document.getElementById('itemForm');
+      const itemModalTitle = document.getElementById('itemModalTitle');
+      const locationSelect = document.getElementById('item-location');
+      const expiryInput = document.getElementById('item-expiry');
+
+      let currentPantryTab = 'fridge';
+
+      function initPantryListeners() {
+          pantryTabButtons.forEach(button => button.addEventListener('click', handlePantryTabClick));
+          openItemModalButton.addEventListener('click', openItemModal);
+
+          // ENHANCED: Pantry item form with API
+          itemForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const formData = new FormData(itemForm);
+              const item = Object.fromEntries(formData.entries());
+
+              try {
+                  setLoading(true);
+                  await ApiService.createPantryItem(item);
+                  showMessage('Item added!', 'success');
+
+                  if (item.location !== currentPantryTab) {
+                      currentPantryTab = item.location;
+                      pantryTabButtons.forEach(button => {
+                          if (button.dataset.tab === currentPantryTab) {
+                              button.classList.add('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                              button.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                          } else {
+                              button.classList.remove('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                              button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                          }
+                      });
+                  }
+
+                  await loadAllData();
+                  modals.pantry.classList.add('hidden');
+              } catch (error) {
+                  showMessage('Failed to add item', 'error');
+              } finally {
+                  setLoading(false);
+              }
+          });
+      }
+
+      function handlePantryTabClick(e) {
+          const clickedTab = e.currentTarget.dataset.tab;
+
+          pantryTabButtons.forEach(button => {
+              if (button.dataset.tab === clickedTab) {
+                  button.classList.add('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                  button.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+              } else {
+                  button.classList.remove('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                  button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+              }
+          });
+
+          currentPantryTab = clickedTab;
+          renderPantryItems();
+      }
+
+      function renderPantryItems() {
+          pantryTabContents.forEach(content => {
+              content.classList.toggle('hidden', content.id !== `${currentPantryTab}List`);
+          });
+
+          const listEl = document.getElementById(`${currentPantryTab}List`);
+          if (!listEl) return;
+          listEl.innerHTML = '';
+          const itemsForTab = allItems.filter(item => item.location === currentPantryTab);
+
+          if (itemsForTab.length === 0) {
+              emptyPlaceholder.classList.remove('hidden');
+              listsContainer.classList.add('hidden');
+          } else {
+              emptyPlaceholder.classList.add('hidden');
+              listsContainer.classList.remove('hidden');
+              itemsForTab.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+              itemsForTab.forEach(item => listEl.appendChild(createItemCard(item)));
+          }
+          lucide.createIcons();
+      }
+
+      function getExpiryStatus(expiryDate) {
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const expiry = new Date(expiryDate);
+          const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysLeft < 0) return { text: 'Expired', color: 'red', days: daysLeft };
+          if (daysLeft === 0) return { text: 'Expires Today', color: 'red', days: daysLeft };
+          if (daysLeft <= 3) return { text: `Expires in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`, color: 'orange', days: daysLeft };
+          return { text: `Expires in ${daysLeft} days`, color: 'green', days: daysLeft };
+      }
+
+      function createItemCard(item) {
+          const card = document.createElement('div');
+          const status = getExpiryStatus(item.expiry);
+          const colorClasses = { red: 'border-red-500', orange: 'border-orange-500', green: 'border-green-500' };
+          const textColorClasses = { red: 'text-red-600 dark:text-red-400', orange: 'text-orange-600 dark:text-orange-400', green: 'text-green-600 dark:text-green-400' };
+          card.className = `item-card bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex flex-col justify-between border-l-4 ${colorClasses[status.color]}`;
+          card.innerHTML = `
+              <div>
+              <div class="flex justify-between items-start">
+                  <h4 class="text-lg font-semibold truncate">${item.name}</h4>
+                  <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${item.quantity}</span>
+              </div>
+              <p class="text-sm ${textColorClasses[status.color]} font-medium mt-1">${status.text}</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Expiry: ${item.expiry}</p>
+          </div>
+          <button data-id="${item.id}" class="delete-item-btn mt-4 w-full text-center text-sm font-medium text-red-600 dark:text-red-400 hover:underline flex items-center justify-center">
+              <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i>
+              Delete
+          </button>`;
+
+          const deleteBtn = card.querySelector('.delete-item-btn');
+          if (deleteBtn) {
+              deleteBtn.addEventListener('click', async () => {
+                  const itemId = deleteBtn.dataset.id;
+                  try {
+                      setLoading(true);
+                      await handleDeletePantryItemWithAPI(itemId);
+                  } catch (error) {
+                      // Error handled in the function
+                  } finally {
+                      setLoading(false);
+                  }
+              });
+          }
+          return card;
+      }
+
+      function openItemModal() {
+          itemForm.reset();
+          itemModalTitle.textContent = "Add New Item";
+          locationSelect.value = currentPantryTab;
+          expiryInput.value = todayString;
+          document.getElementById('item-id').value = "";
+          modals.pantry.classList.remove('hidden');
+      }
+
+      // ===========================================
+      // === BILL TRACKER APP ======================
+      // ===========================================
+
+      // --- Elements ---
+      const billListContainer = document.getElementById('billListContainer');
+      const billPlaceholder = document.getElementById('billPlaceholder');
+      const openAddBillModalBtn = document.getElementById('openAddBillModal');
+      const billForm = document.getElementById('billForm');
+      const billModalTitle = document.getElementById('billModalTitle');
+      const deleteBillButton = document.getElementById('deleteBillButton');
+
+      function initBillListeners() {
+          if (openAddBillModalBtn) {
+              openAddBillModalBtn.addEventListener('click', openBillModal);
+          }
+
+          // ENHANCED: Bill form with API
+          billForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const formData = new FormData(billForm);
+              const bill = Object.fromEntries(formData.entries());
+              bill.amount = parseFloat(bill.amount);
+
+              try {
+                  setLoading(true);
+                  if (bill.id) {
+                      await ApiService.updateBill(bill);
+                      showMessage('Bill updated!', 'success');
+                  } else {
+                      await ApiService.createBill(bill);
+                      showMessage('Bill added!', 'success');
+                  }
+                  await loadAllData();
+                  modals.bill.classList.add('hidden');
+              } catch (error) {
+                  showMessage('Failed to save bill', 'error');
+              } finally {
+                  setLoading(false);
+              }
+          });
+
+          // Delete bill button in modal
+          deleteBillButton.addEventListener('click', async () => {
+              const billId = document.getElementById('bill-id').value;
+              if (!billId) return;
+
+              try {
+                  await handleDeleteBillWithAPI(billId);
+                  modals.bill.classList.add('hidden');
+              } catch (error) {
+                  // Error already shown
+              }
+          });
+      }
+
+      function renderBills() {
+          billListContainer.innerHTML = '';
+          if (allBills.length === 0) {
+              billListContainer.appendChild(billPlaceholder);
+              billPlaceholder.classList.remove('hidden');
+          } else {
+              billPlaceholder.classList.add('hidden');
+              allBills.sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+              allBills.forEach(bill => billListContainer.appendChild(createBillCard(bill)));
+          }
+          lucide.createIcons();
+      }
+
+      function createBillCard(bill) {
+          const card = document.createElement('div');
+          const isPaid = bill.status === 'Paid';
+          const statusColor = isPaid ? 'border-green-500' : 'border-red-500';
+          const statusText = isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+
+          card.className = `bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex items-center justify-between border-l-4 ${statusColor}`;
+          card.innerHTML = `
+              <div class="flex-1">
+                  <h4 class="text-lg font-semibold">${bill.name}</h4>
+                  <p class="text-xl font-bold">₹${bill.amount.toFixed(2)}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Due: ${bill.dueDate}</p>
+              </div>
+              <div class="flex items-center space-x-2">
+                  ${isPaid ? `
+                      <span class="font-semibold ${statusText}">Paid</span>
+                  ` : `
+                      <button data-id="${bill.id}" class="mark-paid-btn inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600" title="Mark as Paid">
+                          <i data-lucide="check" class="w-4 h-4 mr-2"></i>
+                          Mark as Paid
+                      </button>
+                  `}
+                  <button data-id="${bill.id}" class="edit-bill-btn inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600" title="Edit Bill">
+                      <i data-lucide="edit-2" class="w-4 h-4 mr-2"></i>
+                      Edit
+                  </button>
+                  <button data-id="${bill.id}" class="delete-bill-btn inline-flex items-center rounded-md border border-red-300 dark:border-red-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-red-600 dark:text-red-400 shadow-sm hover:bg-red-50 dark:hover:bg-slate-600" title="Delete Bill">
+                      <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>
+                      Delete
+                  </button>
+              </div>
+          `;
+
+          const markPaidBtn = card.querySelector('.mark-paid-btn');
+          if (markPaidBtn) {
+              markPaidBtn.addEventListener('click', async () => {
+                  const billId = parseInt(markPaidBtn.dataset.id);
+                  try {
+                      setLoading(true);
+                      await ApiService.markBillPaid(billId);
+                      showMessage('Bill marked as paid!', 'success');
+                      await loadAllData();
+                  } catch (error) {
+                      showMessage('Failed to mark bill as paid', 'error');
+                  } finally {
+                      setLoading(false);
+                  }
+              });
+          }
+
+          const editBtn = card.querySelector('.edit-bill-btn');
+          if (editBtn) {
+              editBtn.addEventListener('click', () => {
+                  const bill = allBills.find(b => b.id === parseInt(editBtn.dataset.id));
+                  openBillModal(bill);
+              });
+          }
+
+          const deleteBtn = card.querySelector('.delete-bill-btn');
+          if (deleteBtn) {
+              deleteBtn.addEventListener('click', async () => {
+                  const billId = parseInt(deleteBtn.dataset.id);
+                  try {
+                      setLoading(true);
+                      await handleDeleteBillWithAPI(billId);
+                  } catch (error) {
+                      // Error handled
+                  } finally {
+                      setLoading(false);
+                  }
+              });
+          }
+
+          return card;
+      }
+
+      function openBillModal(bill = null) {
+          billForm.reset();
+
+          if (bill) {
+              billModalTitle.textContent = "Edit Bill";
+              deleteBillButton.classList.remove('hidden');
+
+              document.getElementById('bill-id').value = bill.id || "";
+              document.getElementById('bill-name').value = bill.name || "";
+              document.getElementById('bill-amount').value = bill.amount || "";
+              document.getElementById('bill-due-date').value = bill.dueDate || todayString;
+              document.getElementById('bill-status').value = bill.status || "Unpaid";
+          } else {
+              billModalTitle.textContent = "Add New Bill";
+              deleteBillButton.classList.add('hidden');
+              document.getElementById('bill-id').value = "";
+              document.getElementById('bill-due-date').value = todayString;
+          }
+          modals.bill.classList.remove('hidden');
+      }
+
+      // ===========================================
+      // === EXPENSE TRACKER APP ===================
+      // ===========================================
+
+      // --- Elements ---
+      const expenseListContainer = document.getElementById('expenseListContainer');
+      const expensePlaceholder = document.getElementById('expensePlaceholder');
+      const openAddExpenseModalBtn = document.getElementById('openAddExpenseModal');
+      const expenseForm = document.getElementById('expenseForm');
+      const expenseModalTitle = document.getElementById('expenseModalTitle');
+
+      function initExpenseListeners() {
+          if (openAddExpenseModalBtn) {
+              openAddExpenseModalBtn.addEventListener('click', openExpenseModal);
+          }
+
+          // ENHANCED: Expense form with API
+          expenseForm.addEventListener('submit', async (e) => {
+              e.preventDefault();
+              const formData = new FormData(expenseForm);
+              const expense = Object.fromEntries(formData.entries());
+              expense.amount = parseFloat(expense.amount);
+
+              try {
+                  setLoading(true);
+                  await ApiService.createExpense(expense);
+                  showMessage('Expense added!', 'success');
+                  await loadAllData();
+                  modals.expense.classList.add('hidden');
+              } catch (error) {
+                  showMessage('Failed to add expense', 'error');
+              } finally {
+                  setLoading(false);
+              }
+          });
+      }
+
+      function renderExpenses() {
+          expenseListContainer.innerHTML = '';
+          if (allExpenses.length === 0) {
+              expenseListContainer.appendChild(expensePlaceholder);
+              expensePlaceholder.classList.remove('hidden');
+          } else {
+              expensePlaceholder.classList.add('hidden');
+              allExpenses.sort((a,b) => new Date(b.date) - new Date(a.date));
+              allExpenses.forEach(exp => expenseListContainer.appendChild(createExpenseCard(exp)));
+          }
+          lucide.createIcons();
+      }
+
+      function createExpenseCard(expense) {
+          const card = document.createElement('div');
+          card.className = `bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex items-center justify-between`;
+          card.innerHTML = `
+              <div class="flex items-center space-x-4">
+                  <span class="text-xs font-semibold px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full">${expense.category}</span>
+                  <div>
+                      <h4 class="text-lg font-semibold">${expense.name}</h4>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">${expense.date}</p>
+                  </div>
+              </div>
+              <div class="text-right">
+                  <p class="text-xl font-bold">₹${expense.amount.toFixed(2)}</p>
+                  <button data-id="${expense.id}" class="delete-expense-btn text-xs text-red-500 hover:underline">Delete</button>
+              </div>
+          `;
+
+          const deleteBtn = card.querySelector('.delete-expense-btn');
+          if (deleteBtn) {
+              deleteBtn.addEventListener('click', async () => {
+                  const expenseId = parseInt(deleteBtn.dataset.id);
+                  try {
+                      setLoading(true);
+                      await handleDeleteExpenseWithAPI(expenseId);
+                  } catch (error) {
+                      // Error handled
+                  } finally {
+                      setLoading(false);
+                  }
+              });
+          }
+          return card;
+      }
+
+      function openExpenseModal() {
+          expenseForm.reset();
+          expenseModalTitle.textContent = "Add New Expense";
+          document.getElementById('expense-id').value = "";
+          document.getElementById('expense-date').value = todayString;
+          modals.expense.classList.remove('hidden');
+      }
+
+      // --- APP INITIALIZATION ---
+      applyDarkMode();
+      initGlobalListeners();
+      initHomeDashboardListeners();
+      initSubscriptionListeners();
+      initPantryListeners();
+      initBillListeners();
+      initExpenseListeners();
+      initNewFeatures();
+      initializeAppWithAPI();
+  });
+</script>
+</body>
+</html>
