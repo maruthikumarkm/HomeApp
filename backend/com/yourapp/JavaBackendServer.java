@@ -30,9 +30,24 @@ public class JavaBackendServer {
         server.createContext("/api/auth/signup", handler);
         server.createContext("/api/user", handler);
         server.createContext("/api/subscriptions", handler);
+
+        // FIXED: Add context for individual subscription operations
+        server.createContext("/api/subscriptions/", handler);
+
         server.createContext("/api/bills", handler);
+
+        // FIXED: Add context for individual bill operations
+        server.createContext("/api/bills/", handler);
+
         server.createContext("/api/expenses", handler);
+
+        // FIXED: Add context for individual expense operations
+        server.createContext("/api/expenses/", handler);
+
         server.createContext("/api/pantry", handler);
+
+        // FIXED: Add context for individual pantry operations
+        server.createContext("/api/pantry/", handler);
 
         // Add test endpoint
         server.createContext("/api/test", exchange -> {
@@ -51,6 +66,10 @@ public class JavaBackendServer {
         System.out.println("   POST /api/auth/login");
         System.out.println("   POST /api/auth/signup");
         System.out.println("   GET  /api/test (to check if server is working)");
+        System.out.println("   DELETE /api/expenses/{id}");
+        System.out.println("   DELETE /api/subscriptions/{id}");
+        System.out.println("   DELETE /api/bills/{id}");
+        System.out.println("   DELETE /api/pantry/{id}");
         server.start();
     }
 
@@ -93,6 +112,27 @@ public class JavaBackendServer {
             return result;
         }
 
+        // NEW: Extract ID from URL path like /api/expenses/123
+        private Long extractIdFromPath(String path, String basePath) {
+            try {
+                String idPart = path.substring(basePath.length());
+                // Remove trailing slash if present
+                if (idPart.startsWith("/")) {
+                    idPart = idPart.substring(1);
+                }
+                // Remove any query parameters
+                if (idPart.contains("?")) {
+                    idPart = idPart.substring(0, idPart.indexOf("?"));
+                }
+                if (!idPart.isEmpty()) {
+                    return Long.parseLong(idPart);
+                }
+            } catch (Exception e) {
+                // Could not parse ID
+            }
+            return null;
+        }
+
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             setCorsHeaders(exchange);
@@ -109,7 +149,40 @@ public class JavaBackendServer {
             try (Connection conn = DatabaseUtil.getConnection()) {
                 long userId = getAuthenticatedUserId(exchange);
 
-                if(path.equals("/api/auth/login")) {
+                // FIXED: Handle individual resource endpoints first (with IDs)
+                if (path.startsWith("/api/subscriptions/") && !path.equals("/api/subscriptions")) {
+                    Long id = extractIdFromPath(path, "/api/subscriptions");
+                    if (id != null && "DELETE".equals(method)) {
+                        handleDeleteSubscriptionById(exchange, conn, userId, id);
+                    } else {
+                        sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+                    }
+                }
+                else if (path.startsWith("/api/bills/") && !path.equals("/api/bills")) {
+                    Long id = extractIdFromPath(path, "/api/bills");
+                    if (id != null && "DELETE".equals(method)) {
+                        handleDeleteBillById(exchange, conn, userId, id);
+                    } else {
+                        sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+                    }
+                }
+                else if (path.startsWith("/api/expenses/") && !path.equals("/api/expenses")) {
+                    Long id = extractIdFromPath(path, "/api/expenses");
+                    if (id != null && "DELETE".equals(method)) {
+                        handleDeleteExpenseById(exchange, conn, userId, id);
+                    } else {
+                        sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+                    }
+                }
+                else if (path.startsWith("/api/pantry/") && !path.equals("/api/pantry")) {
+                    Long id = extractIdFromPath(path, "/api/pantry");
+                    if (id != null && "DELETE".equals(method)) {
+                        handleDeletePantryItemById(exchange, conn, userId, id);
+                    } else {
+                        sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+                    }
+                }
+                else if(path.equals("/api/auth/login")) {
                     if ("POST".equals(method)) handleLogin(exchange, conn);
                     else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
                 } else if (path.equals("/api/auth/signup")) {
@@ -156,7 +229,71 @@ public class JavaBackendServer {
         }
 
         // ----------------------------------------------------
-        // RE-WRITTEN DELETE METHODS (The Fix)
+        // NEW: DELETE BY ID METHODS (to match frontend routes)
+        // ----------------------------------------------------
+
+        private void handleDeleteSubscriptionById(HttpExchange exchange, Connection conn, long userId, long id) throws IOException, SQLException {
+            System.out.println("🗑️ Deleting subscription ID: " + id);
+            String sql = "DELETE FROM subscriptions WHERE id=? AND user_id=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, id);
+                ps.setLong(2, userId);
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    sendResponse(exchange, 200, "{\"status\":\"success\",\"message\":\"Subscription deleted\"}");
+                } else {
+                    sendResponse(exchange, 404, "{\"error\":\"Subscription not found\"}");
+                }
+            }
+        }
+
+        private void handleDeleteBillById(HttpExchange exchange, Connection conn, long userId, long id) throws IOException, SQLException {
+            System.out.println("🗑️ Deleting bill ID: " + id);
+            String sql = "DELETE FROM bills WHERE id=? AND user_id=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, id);
+                ps.setLong(2, userId);
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    sendResponse(exchange, 200, "{\"status\":\"success\",\"message\":\"Bill deleted\"}");
+                } else {
+                    sendResponse(exchange, 404, "{\"error\":\"Bill not found\"}");
+                }
+            }
+        }
+
+        private void handleDeleteExpenseById(HttpExchange exchange, Connection conn, long userId, long id) throws IOException, SQLException {
+            System.out.println("🗑️ Deleting expense ID: " + id);
+            String sql = "DELETE FROM expenses WHERE id=? AND user_id=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, id);
+                ps.setLong(2, userId);
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    sendResponse(exchange, 200, "{\"status\":\"success\",\"message\":\"Expense deleted\"}");
+                } else {
+                    sendResponse(exchange, 404, "{\"error\":\"Expense not found\"}");
+                }
+            }
+        }
+
+        private void handleDeletePantryItemById(HttpExchange exchange, Connection conn, long userId, long id) throws IOException, SQLException {
+            System.out.println("🗑️ Deleting pantry item ID: " + id);
+            String sql = "DELETE FROM pantry_items WHERE id=? AND user_id=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, id);
+                ps.setLong(2, userId);
+                int rows = ps.executeUpdate();
+                if (rows > 0) {
+                    sendResponse(exchange, 200, "{\"status\":\"success\",\"message\":\"Pantry item deleted\"}");
+                } else {
+                    sendResponse(exchange, 404, "{\"error\":\"Pantry item not found\"}");
+                }
+            }
+        }
+
+        // ----------------------------------------------------
+        // ORIGINAL DELETE METHODS (for compatibility)
         // ----------------------------------------------------
 
         private void handleDeleteBillBody(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
@@ -200,7 +337,6 @@ public class JavaBackendServer {
             }
         }
 
-        // Apply same logic to Expenses, Subscriptions, and Pantry
         private void handleDeleteExpenseBody(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             long idToDelete = -1;
             Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
@@ -256,7 +392,7 @@ public class JavaBackendServer {
         }
 
         // ----------------------------------------------------
-        // AUTH, GET, POST (Remaining original code)
+        // AUTH, GET, POST (FIXED to include all required fields)
         // ----------------------------------------------------
 
         private void handleLogin(HttpExchange exchange, Connection conn) throws IOException, SQLException {
@@ -273,7 +409,9 @@ public class JavaBackendServer {
                         if (rs.next() && rs.getString("password").equals(password)) {
                             JSONObject resp = new JSONObject();
                             resp.put("status", "success");
+                            resp.put("token", "dummy-token-" + rs.getLong("id"));
                             resp.put("name", rs.getString("name"));
+                            resp.put("email", rs.getString("email"));
                             sendResponse(exchange, 200, resp.toString());
                         } else {
                             sendResponse(exchange, 401, "{\"error\":\"Invalid credentials\"}");
@@ -293,7 +431,18 @@ public class JavaBackendServer {
                     ps.setString(2, json.getString("email"));
                     ps.setString(3, json.getString("password"));
                     ps.executeUpdate();
-                    sendResponse(exchange, 201, "{\"status\":\"success\"}");
+
+                    try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            long userId = generatedKeys.getLong(1);
+                            JSONObject resp = new JSONObject();
+                            resp.put("status", "success");
+                            resp.put("token", "dummy-token-" + userId);
+                            resp.put("name", json.getString("name"));
+                            resp.put("email", json.getString("email"));
+                            sendResponse(exchange, 201, resp.toString());
+                        }
+                    }
                 }
             } catch (Exception e) { handleError(exchange, "Signup error", e); }
         }
@@ -305,7 +454,9 @@ public class JavaBackendServer {
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         JSONObject user = new JSONObject();
+                        user.put("id", rs.getLong("id"));
                         user.put("name", rs.getString("name"));
+                        user.put("email", rs.getString("email"));
                         user.put("income", rs.getBigDecimal("monthly_income"));
                         sendResponse(exchange, 200, user.toString());
                     }
@@ -327,7 +478,7 @@ public class JavaBackendServer {
 
         private void handleGetSubscriptions(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONArray array = new JSONArray();
-            String sql = "SELECT * FROM subscriptions WHERE user_id = ?";
+            String sql = "SELECT * FROM subscriptions WHERE user_id = ? ORDER BY next_due_date";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, userId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -336,6 +487,14 @@ public class JavaBackendServer {
                         item.put("id", rs.getLong("id"));
                         item.put("name", rs.getString("name"));
                         item.put("price", rs.getBigDecimal("price"));
+                        item.put("currency", rs.getString("currency"));
+                        item.put("cycle", rs.getString("billing_cycle"));
+                        item.put("nextDue", rs.getDate("next_due_date").toString());
+                        item.put("category", rs.getString("category"));
+                        item.put("paymentMethod", rs.getString("payment_method"));
+                        item.put("notes", rs.getString("notes"));
+                        item.put("receiptUrl", rs.getString("receipt_url"));
+                        item.put("icon", rs.getString("icon"));
                         array.put(item);
                     }
                 }
@@ -346,28 +505,41 @@ public class JavaBackendServer {
         private void handlePostSubscription(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONObject json = new JSONObject(readRequestBody(exchange));
             String sql = "INSERT INTO subscriptions (name, price, currency, billing_cycle, next_due_date, category, payment_method, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, json.getString("name"));
                 ps.setBigDecimal(2, json.getBigDecimal("price"));
-                ps.setString(3, "₹");
-                ps.setString(4, "monthly");
-                ps.setDate(5, Date.valueOf(json.getString("nextDue")));
-                ps.setString(6, "Other");
-                ps.setString(7, "Other");
+                ps.setString(3, json.optString("currency", "₹"));
+                ps.setString(4, json.optString("cycle", "monthly"));
+                ps.setDate(5, Date.valueOf(json.optString("nextDue", new Date(System.currentTimeMillis()).toString())));
+                ps.setString(6, json.optString("category", "Other"));
+                ps.setString(7, json.optString("paymentMethod", "Other"));
                 ps.setLong(8, userId);
                 ps.executeUpdate();
-                sendResponse(exchange, 201, "{\"status\":\"success\"}");
+
+                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        JSONObject response = new JSONObject();
+                        response.put("status", "success");
+                        response.put("id", generatedKeys.getLong(1));
+                        sendResponse(exchange, 201, response.toString());
+                    }
+                }
             }
         }
 
         private void handleUpdateSubscription(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONObject json = new JSONObject(readRequestBody(exchange));
-            String sql = "UPDATE subscriptions SET name=?, price=? WHERE id=? AND user_id=?";
+            String sql = "UPDATE subscriptions SET name=?, price=?, currency=?, billing_cycle=?, next_due_date=?, category=?, payment_method=? WHERE id=? AND user_id=?";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, json.getString("name"));
                 ps.setBigDecimal(2, json.getBigDecimal("price"));
-                ps.setLong(3, json.getLong("id"));
-                ps.setLong(4, userId);
+                ps.setString(3, json.optString("currency", "₹"));
+                ps.setString(4, json.optString("cycle", "monthly"));
+                ps.setDate(5, Date.valueOf(json.optString("nextDue", new Date(System.currentTimeMillis()).toString())));
+                ps.setString(6, json.optString("category", "Other"));
+                ps.setString(7, json.optString("paymentMethod", "Other"));
+                ps.setLong(8, json.getLong("id"));
+                ps.setLong(9, userId);
                 ps.executeUpdate();
                 sendResponse(exchange, 200, "{\"status\":\"success\"}");
             }
@@ -375,7 +547,7 @@ public class JavaBackendServer {
 
         private void handleGetBills(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONArray array = new JSONArray();
-            String sql = "SELECT * FROM bills WHERE user_id = ?";
+            String sql = "SELECT * FROM bills WHERE user_id = ? ORDER BY due_date";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, userId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -396,14 +568,22 @@ public class JavaBackendServer {
         private void handlePostBill(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONObject json = new JSONObject(readRequestBody(exchange));
             String sql = "INSERT INTO bills (name, amount, due_date, status, user_id) VALUES (?, ?, ?, ?, ?)";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, json.getString("name"));
                 ps.setBigDecimal(2, json.getBigDecimal("amount"));
-                ps.setDate(3, Date.valueOf(json.getString("dueDate")));
-                ps.setString(4, "Unpaid");
+                ps.setDate(3, Date.valueOf(json.optString("dueDate", new Date(System.currentTimeMillis()).toString())));
+                ps.setString(4, json.optString("status", "Unpaid"));
                 ps.setLong(5, userId);
                 ps.executeUpdate();
-                sendResponse(exchange, 201, "{\"status\":\"success\"}");
+
+                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        JSONObject response = new JSONObject();
+                        response.put("status", "success");
+                        response.put("id", generatedKeys.getLong(1));
+                        sendResponse(exchange, 201, response.toString());
+                    }
+                }
             }
         }
 
@@ -418,9 +598,10 @@ public class JavaBackendServer {
             }
         }
 
+        // FIXED: Added date field to expenses response
         private void handleGetExpenses(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONArray array = new JSONArray();
-            String sql = "SELECT * FROM expenses WHERE user_id = ?";
+            String sql = "SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, userId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -429,6 +610,8 @@ public class JavaBackendServer {
                         item.put("id", rs.getLong("id"));
                         item.put("name", rs.getString("name"));
                         item.put("amount", rs.getBigDecimal("amount"));
+                        item.put("date", rs.getDate("date").toString()); // FIXED: Added date field
+                        item.put("category", rs.getString("category")); // FIXED: Added category
                         array.put(item);
                     }
                 }
@@ -439,20 +622,29 @@ public class JavaBackendServer {
         private void handlePostExpense(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONObject json = new JSONObject(readRequestBody(exchange));
             String sql = "INSERT INTO expenses (name, amount, date, category, user_id) VALUES (?, ?, ?, ?, ?)";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, json.getString("name"));
                 ps.setBigDecimal(2, json.getBigDecimal("amount"));
-                ps.setDate(3, new Date(System.currentTimeMillis()));
-                ps.setString(4, "General");
+                ps.setDate(3, Date.valueOf(json.optString("date", new Date(System.currentTimeMillis()).toString())));
+                ps.setString(4, json.optString("category", "General"));
                 ps.setLong(5, userId);
                 ps.executeUpdate();
-                sendResponse(exchange, 201, "{\"status\":\"success\"}");
+
+                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        JSONObject response = new JSONObject();
+                        response.put("status", "success");
+                        response.put("id", generatedKeys.getLong(1));
+                        sendResponse(exchange, 201, response.toString());
+                    }
+                }
             }
         }
 
+        // FIXED: Added all pantry item fields
         private void handleGetPantryItems(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONArray array = new JSONArray();
-            String sql = "SELECT * FROM pantry_items WHERE user_id = ?";
+            String sql = "SELECT * FROM pantry_items WHERE user_id = ? ORDER BY expiry_date";
             try (PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setLong(1, userId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -460,6 +652,9 @@ public class JavaBackendServer {
                         JSONObject item = new JSONObject();
                         item.put("id", rs.getLong("id"));
                         item.put("name", rs.getString("name"));
+                        item.put("location", rs.getString("location"));
+                        item.put("quantity", rs.getString("quantity"));
+                        item.put("expiry", rs.getDate("expiry_date").toString()); // FIXED: Changed to "expiry"
                         array.put(item);
                     }
                 }
@@ -470,14 +665,22 @@ public class JavaBackendServer {
         private void handlePostPantryItem(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
             JSONObject json = new JSONObject(readRequestBody(exchange));
             String sql = "INSERT INTO pantry_items (name, location, quantity, expiry_date, user_id) VALUES (?, ?, ?, ?, ?)";
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, json.getString("name"));
-                ps.setString(2, "Kitchen");
-                ps.setString(3, "1");
-                ps.setDate(4, new Date(System.currentTimeMillis() + 864000000L));
+                ps.setString(2, json.optString("location", "kitchen"));
+                ps.setString(3, json.optString("quantity", "1"));
+                ps.setDate(4, Date.valueOf(json.optString("expiry", new Date(System.currentTimeMillis() + 864000000L).toString())));
                 ps.setLong(5, userId);
                 ps.executeUpdate();
-                sendResponse(exchange, 201, "{\"status\":\"success\"}");
+
+                try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        JSONObject response = new JSONObject();
+                        response.put("status", "success");
+                        response.put("id", generatedKeys.getLong(1));
+                        sendResponse(exchange, 201, response.toString());
+                    }
+                }
             }
         }
 
