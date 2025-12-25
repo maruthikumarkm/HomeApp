@@ -5,9 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5849b77b-4712-48b4-a122-db6fa9f337e3" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HomeApp.iml" beforeDir="false" afterPath="$PROJECT_DIR$/HomeApp.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/com/yourapp/JavaBackendServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/com/yourapp/JavaBackendServer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,10 +45,10 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/.idea/libraries" />
-      <recent name="$PROJECT_DIR$/backend/lib" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/.idea" />
+      <recent name="$PROJECT_DIR$/.idea/libraries" />
+      <recent name="$PROJECT_DIR$/backend/lib" />
       <recent name="$PROJECT_DIR$/backend/com/yourapp" />
     </key>
   </component>

@@ -20,7 +20,11 @@ import java.util.concurrent.Executors;
 public class JavaBackendServer {
 
     public static void main(String[] args) throws IOException {
-        int port = 8080;
+
+        // 🔥 NEW — support Render dynamic port
+        String portEnv = System.getenv("PORT");
+        int port = (portEnv != null) ? Integer.parseInt(portEnv) : 8080;
+
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
         ApiHandler handler = new ApiHandler();
@@ -692,7 +696,7 @@ public class JavaBackendServer {
     }
 
     static class DatabaseUtil {
-        private static final String DB_URL = "jdbc:mysql://localhost:3306/home_app_db";
+        private static final String DB_URL = "jdbc:mysql://host.docker.internal:3306/home_app_db?useSSL=false&serverTimezone=UTC";
         private static final String USER   = "root";
         private static final String PASS   = "Maruthi@2345";
 
