@@ -1378,7 +1378,7 @@
       // ========== API CONFIGURATION ==========
       // Make sure this matches your Java backend base path.
       // Example: if your Spring controllers are under "/api/**"
-      const API_BASE_URL = 'http://localhost:8080/api';
+      const API_BASE_URL = 'https://your-render-backend.onrender.com/api';
 
       // ========== API SERVICE (FIXED) ==========
       class ApiService {
@@ -1555,6 +1555,30 @@
               });
           }
       }
+
+      // ========== UTILITY FUNCTIONS ==========
+      function showMessage(message, type = 'success') {
+          const messageEl = document.createElement('div');
+          messageEl.className = `api-message api-${type} fade-in`;
+          messageEl.textContent = message;
+          document.body.appendChild(messageEl);
+
+          setTimeout(() => {
+              messageEl.remove();
+          }, 3000);
+      }
+
+      function setLoading(loading = true) {
+          const app = document.getElementById('app');
+          if (loading) {
+              app.classList.add('api-loading');
+          } else {
+              app.classList.remove('api-loading');
+          }
+      }
+
+
+
 
       // ========== UTILITY FUNCTIONS ==========
       function showMessage(message, type = 'success') {
