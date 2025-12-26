@@ -696,7 +696,8 @@ public class JavaBackendServer {
     }
 
     static class DatabaseUtil {
-        private static final String DB_URL = "jdbc:mysql://gondola.proxy.rlwy.net:30447/railway?useSSL=false&serverTimezone=UTC";
+        private static final String DB_URL = "jdbc:mysql://<HOST>:<PORT>/<DBNAME>?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
+
         private static final String USER   = "root";
         private static final String PASS   = "eMbflRWnERjVAyWmpprsWOvXzZojcvST";
 
