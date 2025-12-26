@@ -16,6 +16,9 @@ import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.sql.Connection;
+import java.sql.DriverManager;
+
 
 public class JavaBackendServer {
 
@@ -696,7 +699,7 @@ public class JavaBackendServer {
     }
 
     static class DatabaseUtil {
-        private static final String DB_URL = "jdbc:mysql://<HOST>:<PORT>/<DBNAME>?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
+        private static final String DB_URL = "jdbc:mysql://gondola.proxy.rlwy.net:30447/railway?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
 
         private static final String USER   = "root";
         private static final String PASS   = "eMbflRWnERjVAyWmpprsWOvXzZojcvST";
@@ -704,7 +707,9 @@ public class JavaBackendServer {
         static {
             try {
                 Class.forName("com.mysql.cj.jdbc.Driver");
+               Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
                 System.out.println("✅ Driver Loaded");
+                conn.close();
             } catch (Exception e) { e.printStackTrace(); }
         }
 
