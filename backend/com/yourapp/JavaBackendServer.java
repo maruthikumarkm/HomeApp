@@ -10,23 +10,38 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
-import java.sql.Connection;
-import java.sql.DriverManager;
-
 
 public class JavaBackendServer {
 
     public static void main(String[] args) throws IOException {
-
-        // 🔥 NEW — support Render dynamic port
+        // ========== ADDED FOR RENDER ==========
+        // Get port from Render environment variable
         String portEnv = System.getenv("PORT");
-        int port = (portEnv != null) ? Integer.parseInt(portEnv) : 8080;
+        int port = 8080; // Default port
+
+        if (portEnv != null && !portEnv.trim().isEmpty()) {
+            try {
+                port = Integer.parseInt(portEnv.trim());
+            } catch (NumberFormatException e) {
+                System.out.println("⚠️ Invalid PORT environment variable: '" + portEnv + "', using default: " + port);
+            }
+        }
+
+        // ========== ADDED DEBUG LOGS ==========
+        System.out.println("========================================");
+        System.out.println("🚀 Starting HomeApp Backend Server");
+        System.out.println("📡 Port: " + port);
+        System.out.println("📁 Working Directory: " + System.getProperty("user.dir"));
+        System.out.println("========================================");
+
+        // Initialize database tables first
+        System.out.println("🔧 Initializing database...");
+        DatabaseUtil.initializeDatabase();
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
@@ -66,13 +81,24 @@ public class JavaBackendServer {
             sendResponse(exchange, 200, response.toString());
         });
 
+        // ADDED: Health check endpoint for Render
+        server.createContext("/health", exchange -> {
+            setCorsHeaders(exchange);
+            JSONObject response = new JSONObject();
+            response.put("status", "healthy");
+            response.put("service", "homeapp-backend");
+            sendResponse(exchange, 200, response.toString());
+        });
+
         server.setExecutor(Executors.newFixedThreadPool(10));
 
         System.out.println("✅ Server started on port " + port);
+        System.out.println("🌐 Access URL: http://0.0.0.0:" + port);
         System.out.println("📡 Available endpoints:");
+        System.out.println("   GET  /api/test (to check if server is working)");
+        System.out.println("   GET  /health (health check)");
         System.out.println("   POST /api/auth/login");
         System.out.println("   POST /api/auth/signup");
-        System.out.println("   GET  /api/test (to check if server is working)");
         System.out.println("   DELETE /api/expenses/{id}");
         System.out.println("   DELETE /api/subscriptions/{id}");
         System.out.println("   DELETE /api/bills/{id}");
@@ -699,22 +725,129 @@ public class JavaBackendServer {
     }
 
     static class DatabaseUtil {
-        private static final String DB_URL = "jdbc:mysql://gondola.proxy.rlwy.net:30447/railway?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC";
-
-        private static final String USER   = "root";
-        private static final String PASS   = "eMbflRWnERjVAyWmpprsWOvXzZojcvST";
+        private static final String DB_URL;
+        private static final String DB_USER;
+        private static final String DB_PASS;
 
         static {
+            // Try to get from Render environment variables first
+            String jdbcUrl = System.getenv("JDBC_DATABASE_URL");
+            String jdbcUser = System.getenv("JDBC_DATABASE_USERNAME");
+            String jdbcPass = System.getenv("JDBC_DATABASE_PASSWORD");
+
+            if (jdbcUrl != null && jdbcUser != null && jdbcPass != null) {
+                // Use Render environment variables
+                DB_URL = jdbcUrl;
+                DB_USER = jdbcUser;
+                DB_PASS = jdbcPass;
+                System.out.println("✅ Using Render environment variables for database");
+            } else {
+                // Fallback to your Railway database
+                DB_URL = "jdbc:mysql://gondola.proxy.rlwy.net:30447/railway" +
+                        "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
+                DB_USER = "root";
+                DB_PASS = "eMbflRWnERjVAyWmpprsWOvXzZojcvST";
+                System.out.println("✅ Using Railway database directly");
+            }
+
+            // Debug (mask password)
+            String safeUrl = DB_URL.replace(DB_PASS, "***");
+            System.out.println("📊 Database URL: " + safeUrl);
+            System.out.println("👤 Database User: " + DB_USER);
+
             try {
                 Class.forName("com.mysql.cj.jdbc.Driver");
-               Connection conn = DriverManager.getConnection(DB_URL, USER, PASS);
-                System.out.println("✅ Driver Loaded");
-                conn.close();
-            } catch (Exception e) { e.printStackTrace(); }
+                System.out.println("✅ MySQL Driver Loaded");
+            } catch (Exception e) {
+                System.err.println("❌ Failed to load MySQL driver:");
+                e.printStackTrace();
+            }
         }
 
         public static Connection getConnection() throws SQLException {
-            return DriverManager.getConnection(DB_URL, USER, PASS);
+            System.out.println("🔗 Connecting to Railway MySQL...");
+            return DriverManager.getConnection(DB_URL, DB_USER, DB_PASS);
+        }
+
+        public static void initializeDatabase() {
+            try (Connection conn = getConnection();
+                 Statement stmt = conn.createStatement()) {
+
+                System.out.println("🔧 Initializing database tables...");
+
+                // Create users table
+                stmt.execute("CREATE TABLE IF NOT EXISTS users (" +
+                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                        "name VARCHAR(100) NOT NULL, " +
+                        "email VARCHAR(100) UNIQUE NOT NULL, " +
+                        "password VARCHAR(100) NOT NULL, " +
+                        "monthly_income DECIMAL(10,2) DEFAULT 0.00, " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+                // Create subscriptions table
+                stmt.execute("CREATE TABLE IF NOT EXISTS subscriptions (" +
+                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                        "user_id INT NOT NULL, " +
+                        "name VARCHAR(100) NOT NULL, " +
+                        "price DECIMAL(10,2) NOT NULL, " +
+                        "currency VARCHAR(10) DEFAULT '₹', " +
+                        "billing_cycle VARCHAR(20) DEFAULT 'monthly', " +
+                        "next_due_date DATE NOT NULL, " +
+                        "category VARCHAR(50) DEFAULT 'Other', " +
+                        "payment_method VARCHAR(50) DEFAULT 'Other', " +
+                        "notes TEXT, " +
+                        "receipt_url TEXT, " +
+                        "icon VARCHAR(100), " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)");
+
+                // Create bills table
+                stmt.execute("CREATE TABLE IF NOT EXISTS bills (" +
+                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                        "user_id INT NOT NULL, " +
+                        "name VARCHAR(100) NOT NULL, " +
+                        "amount DECIMAL(10,2) NOT NULL, " +
+                        "due_date DATE NOT NULL, " +
+                        "status VARCHAR(20) DEFAULT 'Unpaid', " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)");
+
+                // Create expenses table
+                stmt.execute("CREATE TABLE IF NOT EXISTS expenses (" +
+                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                        "user_id INT NOT NULL, " +
+                        "name VARCHAR(100) NOT NULL, " +
+                        "amount DECIMAL(10,2) NOT NULL, " +
+                        "date DATE NOT NULL, " +
+                        "category VARCHAR(50) DEFAULT 'General', " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)");
+
+                // Create pantry_items table
+                stmt.execute("CREATE TABLE IF NOT EXISTS pantry_items (" +
+                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                        "user_id INT NOT NULL, " +
+                        "name VARCHAR(100) NOT NULL, " +
+                        "location VARCHAR(100) DEFAULT 'kitchen', " +
+                        "quantity VARCHAR(50) DEFAULT '1', " +
+                        "expiry_date DATE NOT NULL, " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)");
+
+                System.out.println("✅ Database tables created/verified");
+
+                // Add a test user if table is empty
+                ResultSet rs = stmt.executeQuery("SELECT COUNT(*) as count FROM users");
+                if (rs.next() && rs.getInt("count") == 0) {
+                    stmt.execute("INSERT INTO users (name, email, password) VALUES " +
+                            "('Test User', 'test@example.com', 'password123')");
+                    System.out.println("👤 Added test user: test@example.com / password123");
+                }
+
+            } catch (SQLException e) {
+                System.err.println("❌ Database initialization failed: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
 }
