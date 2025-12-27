@@ -1375,1820 +1375,1783 @@
 <!-- ======================= -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // ========== API CONFIGURATION ==========
-      // Make sure this matches your Java backend base path.
-      // Example: if your Spring controllers are under "/api/**"
-      const API_BASE_URL = "https://homeapp-v540.onrender.com/api";
-
-
-      // ========== API SERVICE (FIXED) ==========
-      class ApiService {
-          static async request(endpoint, options = {}) {
-              const token = localStorage.getItem('authToken');
-
-              const {
-                  body,
-                  headers = {},
-                  method = 'GET',
-                  ...restOptions
-              } = options;
-
-              const fetchOptions = {
-                  method,
-                  headers: {
-                      // Only send JSON header if there is a body
-                      ...(body !== undefined && { 'Content-Type': 'application/json' }),
-                      ...(token && { 'Authorization': `Bearer ${token}` }),
-                      ...headers,
-                  },
-                  ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-                  ...restOptions,
-              };
-
-              try {
-                  const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
-
-                  if (!response.ok) {
-                      const errorText = await response.text().catch(() => '');
-                      throw new Error(`API Error ${response.status}: ${errorText}`);
-                  }
-
-                  // If no body or not JSON, just return null
-                  const contentType = response.headers.get('content-type') || '';
-                  if (
-                      response.status === 204 ||
-                      response.status === 205 ||
-                      !contentType.toLowerCase().includes('application/json')
-                  ) {
-                      return null;
-                  }
-
-                  return await response.json();
-              } catch (error) {
-                  console.error('API Request failed:', error);
-                  throw error;
-              }
-          }
-
-          // ---------- Auth ----------
-          static async login(email, password) {
-              return this.request('/auth/login', {
-                  method: 'POST',
-                  body: { email, password }
-              });
-          }
-
-          static async signup(name, email, password) {
-              return this.request('/auth/signup', {
-                  method: 'POST',
-                  body: { name, email, password }
-              });
-          }
-
-          // ---------- User ----------
-          static async getUser() {
-              return this.request('/user');
-          }
-
-          static async updateIncome(income) {
-              return this.request('/user', {
-                  method: 'PUT',
-                  body: { income: parseFloat(income) }
-              });
-          }
-
-          // ---------- Subscriptions ----------
-          static async getSubscriptions() {
-              return this.request('/subscriptions');
-          }
-
-          static async createSubscription(subscription) {
-              return this.request('/subscriptions', {
-                  method: 'POST',
-                  body: subscription
-              });
-          }
-
-          static async updateSubscription(subscription) {
-              return this.request('/subscriptions', {
-                  method: 'PUT',
-                  body: subscription
-              });
-          }
-
-          static async deleteSubscription(id) {
-              console.log('🔴 API: Deleting subscription ID:', id);
-              // Most REST APIs do not expect a body for DELETE
-              return this.request(`/subscriptions/${id}`, {
-                  method: 'DELETE'
-              });
-          }
-
-          // ---------- Bills ----------
-          static async getBills() {
-              return this.request('/bills');
-          }
-
-          static async createBill(bill) {
-              return this.request('/bills', {
-                  method: 'POST',
-                  body: bill
-              });
-          }
-
-          static async updateBill(bill) {
-              return this.request('/bills', {
-                  method: 'PUT',
-                  body: bill
-              });
-          }
-
-          static async markBillPaid(id) {
-              // Keep this as-is unless your backend uses a different endpoint
-              return this.request('/bills', {
-                  method: 'PUT',
-                  body: { id: parseInt(id) }
-              });
-          }
-
-          static async deleteBill(id) {
-              console.log('🔴 API: Deleting bill ID:', id);
-              return this.request(`/bills/${id}`, {
-                  method: 'DELETE'
-              });
-          }
-
-          // ---------- Expenses ----------
-          static async getExpenses() {
-              return this.request('/expenses');
-          }
-
-          static async createExpense(expense) {
-              return this.request('/expenses', {
-                  method: 'POST',
-                  body: expense
-              });
-          }
-
-          static async deleteExpense(id) {
-              console.log('🔴 API: Deleting expense ID:', id);
-              return this.request(`/expenses/${id}`, {
-                  method: 'DELETE'
-              });
-          }
-
-          // ---------- Pantry ----------
-          static async getPantryItems() {
-              return this.request('/pantry');
-          }
-
-          static async createPantryItem(item) {
-              return this.request('/pantry', {
-                  method: 'POST',
-                  body: item
-              });
-          }
-
-          static async deletePantryItem(id) {
-              console.log('🔴 API: Deleting pantry item ID:', id);
-              return this.request(`/pantry/${id}`, {
-                  method: 'DELETE'
-              });
-          }
-      }
-
-      // ========== UTILITY FUNCTIONS ==========
-      function showMessage(message, type = 'success') {
-          const messageEl = document.createElement('div');
-          messageEl.className = `api-message api-${type} fade-in`;
-          messageEl.textContent = message;
-          document.body.appendChild(messageEl);
-
-          setTimeout(() => {
-              messageEl.remove();
-          }, 3000);
-      }
-
-      function setLoading(loading = true) {
-          const app = document.getElementById('app');
-          if (loading) {
-              app.classList.add('api-loading');
-          } else {
-              app.classList.remove('api-loading');
-          }
-      }
-
-
-
-
-      // ========== UTILITY FUNCTIONS ==========
-      function showMessage(message, type = 'success') {
-          const messageEl = document.createElement('div');
-          messageEl.className = `api-message api-${type} fade-in`;
-          messageEl.textContent = message;
-          document.body.appendChild(messageEl);
-
-          setTimeout(() => {
-              messageEl.remove();
-          }, 3000);
-      }
-
-      function setLoading(loading = true) {
-          const app = document.getElementById('app');
-          if (loading) {
-              app.classList.add('api-loading');
-          } else {
-              app.classList.remove('api-loading');
-          }
-      }
-
-      // ========== ENHANCED AUTH HANDLERS ==========
-      async function handleLoginWithAPI(email, password) {
-          try {
-              setLoading(true);
-              const result = await ApiService.login(email, password);
-
-              // Store token and user info
-              localStorage.setItem('authToken', result.token);
-              localStorage.setItem('userName', result.name);
-              localStorage.setItem('userEmail', result.email);
-
-              showMessage('Login successful!', 'success');
-              return result;
-          } catch (error) {
-              showMessage('Login failed. Please check your credentials.', 'error');
-              throw error;
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      async function handleSignupWithAPI(name, email, password) {
-          try {
-              setLoading(true);
-              const result = await ApiService.signup(name, email, password);
-
-              // Store token and user info
-              localStorage.setItem('authToken', result.token);
-              localStorage.setItem('userName', result.name);
-              localStorage.setItem('userEmail', result.email);
-
-              showMessage('Account created successfully!', 'success');
-              return result;
-          } catch (error) {
-              showMessage('Signup failed. Please try again.', 'error');
-              throw error;
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      // ========== ENHANCED DATA LOADING ==========
-      async function loadAllData() {
-          try {
-              setLoading(true);
-
-              // Load user data
-              const userData = await ApiService.getUser();
-              document.getElementById('userName').textContent = userData.name;
-              if (userData.income) {
-                  totalIncome = userData.income;
-                  renderHomeDashboard();
-              }
-
-              // Load all other data
-              const [subscriptions, bills, expenses, pantryItems] = await Promise.all([
-                  ApiService.getSubscriptions(),
-                  ApiService.getBills(),
-                  ApiService.getExpenses(),
-                  ApiService.getPantryItems()
-              ]);
-
-              // Update your existing data arrays
-              allSubscriptions = subscriptions;
-              allBills = bills;
-              allExpenses = expenses;
-              allItems = pantryItems;
-
-              // Refresh UI
-              renderHomeDashboard();
-              renderSubscriptionList();
-              renderBills();
-              renderExpenses();
-              renderPantryItems();
-
-          } catch (error) {
-              showMessage('Failed to load data', 'error');
-              console.error('Data loading error:', error);
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      // ========== ENHANCED FORM HANDLERS ==========
-      async function handleSaveSubscriptionWithAPI(subscriptionData) {
-          try {
-              setLoading(true);
-              let result;
-
-              if (subscriptionData.id) {
-                  // Update existing
-                  result = await ApiService.updateSubscription(subscriptionData);
-                  showMessage('Subscription updated!', 'success');
-              } else {
-                  // Create new
-                  result = await ApiService.createSubscription(subscriptionData);
-                  showMessage('Subscription added!', 'success');
-              }
-
-              // Refresh data
-              await loadAllData();
-              return result;
-          } catch (error) {
-              showMessage('Failed to save subscription', 'error');
-              throw error;
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      // CORRECTED DELETE HANDLERS WITH DEBUG LOGGING
-      async function handleDeleteSubscriptionWithAPI(id) {
-          try {
-              console.log('🔴 DELETE: Starting delete for subscription ID:', id);
-              setLoading(true);
-              await ApiService.deleteSubscription(id);
-              console.log('✅ DELETE: Subscription deleted successfully');
-              showMessage('Subscription deleted!', 'success');
-              await loadAllData();
-          } catch (error) {
-              console.error('❌ DELETE: Failed to delete subscription:', error);
-              showMessage('Failed to delete subscription', 'error');
-              throw error;
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      // NEW: Bill deletion handler
-      async function handleDeleteBillWithAPI(id) {
-          try {
-              console.log('🔴 DELETE: Starting delete for bill ID:', id);
-              setLoading(true);
-              await ApiService.deleteBill(id);
-              console.log('✅ DELETE: Bill deleted successfully');
-              showMessage('Bill deleted!', 'success');
-              await loadAllData();
-          } catch (error) {
-              console.error('❌ DELETE: Failed to delete bill:', error);
-              showMessage('Failed to delete bill', 'error');
-              throw error;
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      async function handleDeleteExpenseWithAPI(id) {
-          try {
-              console.log('🔴 DELETE: Starting delete for expense ID:', id);
-              setLoading(true);
-              await ApiService.deleteExpense(id);
-              console.log('✅ DELETE: Expense deleted successfully');
-              showMessage('Expense deleted!', 'success');
-              await loadAllData();
-          } catch (error) {
-              console.error('❌ DELETE: Failed to delete expense:', error);
-              showMessage('Failed to delete expense', 'error');
-              throw error;
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      async function handleDeletePantryItemWithAPI(id) {
-          try {
-              console.log('🔴 DELETE: Starting delete for pantry item ID:', id);
-              setLoading(true);
-              await ApiService.deletePantryItem(id);
-              console.log('✅ DELETE: Pantry item deleted successfully');
-              showMessage('Item deleted!', 'success');
-              await loadAllData();
-          } catch (error) {
-              console.error('❌ DELETE: Failed to delete pantry item:', error);
-              showMessage('Failed to delete item', 'error');
-              throw error;
-          } finally {
-              setLoading(false);
-          }
-      }
-
-      // ========== INITIALIZATION ==========
-      function initializeAppWithAPI() {
-          // Check if user is logged in
-          const token = localStorage.getItem('authToken');
-          const userName = localStorage.getItem('userName');
-
-          if (token && userName) {
-              // User is logged in
-              document.getElementById('userName').textContent = userName;
-              showPage('main');
-              showAppPage('home');
-
-              // Load data from API
-              loadAllData();
-          } else {
-              // User not logged in
-              showPage('landing');
-          }
-      }
-
-      // --- GLOBAL ELEMENTS (Pages) ---
-      const pages = {
-          landing: document.getElementById('landingPage'),
-          login: document.getElementById('loginPage'),
-          signup: document.getElementById('signupPage'),
-          main: document.getElementById('mainApp'),
-      };
-      const appPages = {
-          home: document.getElementById('homePage'),
-          subscription: document.getElementById('subscriptionPage'),
-          pantry: document.getElementById('pantryPage'),
-          bills: document.getElementById('billPage'),
-          expenses: document.getElementById('expensePage'),
-      };
-      // --- GLOBAL ELEMENTS (Modals) ---
-      const modals = {
-          subscription: document.getElementById('addSubscriptionModal'),
-          smartAdd: document.getElementById('smartAddModal'),
-          pantry: document.getElementById('addItemModal'),
-          bill: document.getElementById('addBillModal'),
-          expense: document.getElementById('addExpenseModal'),
-          income: document.getElementById('editIncomeModal'),
-      };
-
-      // --- GLOBAL ELEMENTS (Navigation) ---
-      const goToSignupButton = document.getElementById('goToSignup');
-      const goToLoginButton = document.getElementById('goToLogin');
-
-      // Landing Page Buttons
-      const goToLoginFromLanding = document.getElementById('goToLoginFromLanding');
-      const goToSignupFromLanding = document.getElementById('goToSignupFromLanding');
-      const goToLoginFromLandingMobile = document.getElementById('goToLoginFromLandingMobile');
-      const goToSignupFromLandingMobile = document.getElementById('goToSignupFromLandingMobile');
-      const goToSignupFromLandingHero = document.getElementById('goToSignupFromLandingHero');
-      const modalCloseButtons = document.querySelectorAll('.modal-close-btn');
-      const navLinks = document.querySelectorAll('.nav-link');
-      const pageTitle = document.getElementById('pageTitle');
-      // --- GLOBAL ELEMENTS (Sidebar) ---
-      const sidebar = document.getElementById('sidebar');
-      const openSidebarButton = document.getElementById('openSidebar');
-      const closeSidebarButton = document.getElementById('closeSidebar');
-      const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-      // --- GLOBAL ELEMENTS (Auth) ---
-      const loginForm = document.getElementById('loginForm');
-      const signupForm = document.getElementById('signupForm');
-      const logoutButton = document.getElementById('logoutButton');
-      const userNameEl = document.getElementById('userName');
-      // --- GLOBAL ELEMENTS (Dark Mode) ---
-      const mainDarkModeToggle = document.getElementById('darkModeToggle');
-      const htmlEl = document.documentElement;
-
-      // --- NEW ELEMENTS ---
-      const loader = document.getElementById('loader');
-      const scrollToTopBtn = document.getElementById('scrollToTop');
-      const faqQuestions = document.querySelectorAll('.faq-question');
-      const contactForm = document.getElementById('contactForm');
-
-      // --- GLOBAL APP STATE (Mock Data) ---
-      let totalIncome = 50000;
-      let allSubscriptions = [
-          { id: 1, name: "Netflix", price: 149, currency: "₹", cycle: "monthly", nextDue: "2025-11-05", category: "Streaming", notes: "Basic Plan", paymentMethod: "Credit Card", receiptUrl: "", icon: "tv" },
-          { id: 2, name: "Spotify", price: 119, currency: "₹", cycle: "monthly", nextDue: "2025-11-12", category: "Music", notes: "Premium Individual", paymentMethod: "PayPal", receiptUrl: "https://example.com/receipt/123", icon: "music" },
-          { id: 3, name: "AWS", price: 500, currency: "₹", cycle: "monthly", nextDue: "2025-11-02", category: "Cloud", notes: "Free Tier Limit", paymentMethod: "Credit Card", receiptUrl: "", icon: "cloud" },
-          { id: 4, name: "Microsoft 365", price: 489, currency: "₹", cycle: "monthly", nextDue: "2025-11-20", category: "Productivity", notes: "", paymentMethod: "Credit Card", receiptUrl: "", icon: "layout-grid" },
-      ];
-      const predefinedSubscriptions = [
-          { name: 'Netflix', price: 149, category: 'Streaming', icon: 'tv' },
-          { name: 'Spotify', price: 119, category: 'Music', icon: 'music' },
-          { name: 'Amazon Prime', price: 299, category: 'Streaming', icon: 'shopping-cart' },
-          { name: 'Disney+ Hotstar', price: 299, category: 'Streaming', icon: 'film' },
-          { name: 'YouTube Premium', price: 129, category: 'Music', icon: 'youtube' },
-          { name: 'AWS', price: 500, category: 'Cloud', icon: 'cloud' },
-          { name: 'Adobe CC', price: 1500, category: 'Software', icon: 'pen-tool' },
-          { name: 'Microsoft 365', price: 489, category: 'Productivity', icon: 'layout-grid' },
-      ];
-
-      let allItems = [
-          { id: 1, name: "Milk", location: "fridge", quantity: "1 Gallon", expiry: new Date(Date.now() + 86400000).toISOString().split('T')[0] },
-          { id: 2, name: "Eggs", location: "fridge", quantity: "12 count", expiry: new Date(Date.now() + 3*86400000).toISOString().split('T')[0] },
-          { id: 4, name: "Canned Beans", location: "pantry", quantity: "3 cans", expiry: "2026-12-01" },
-      ];
-      let allBills = [
-          { id: 1, name: 'Electricity', amount: 1200, dueDate: '2025-11-10', status: 'Unpaid' },
-          { id: 2, name: 'Internet', amount: 599, dueDate: '2025-11-05', status: 'Paid' },
-      ];
-      let allExpenses = [
-          { id: 1, name: 'Weekly Groceries', amount: 2500, date: '2025-10-25', category: 'Grocery' },
-          { id: 2, name: 'Tution Fee', amount: 5000, date: '2025-10-20', category: 'School Fees' },
-          { id: 3, name: 'Petrol', amount: 1200, date: '2025-10-28', category: 'Transport' },
-      ];
-
-      // --- Chart variables ---
-      let categoryChart = null;
-      let spendingTrendChart = null;
-
-      // --- Today's Date ---
-      const today = new Date();
-      const todayString = today.toISOString().split('T')[0];
-
-      // --- NEW FEATURE INITIALIZATION ---
-      function initNewFeatures() {
-          // Loader
-          setTimeout(() => {
-              loader.classList.add('hidden');
-          }, 1500);
-
-          // Scroll to top button
-          window.addEventListener('scroll', () => {
-              if (window.pageYOffset > 300) {
-                  scrollToTopBtn.classList.add('visible');
-              } else {
-                  scrollToTopBtn.classList.remove('visible');
-              }
-          });
-
-          scrollToTopBtn.addEventListener('click', () => {
-              window.scrollTo({
-                  top: 0,
-                  behavior: 'smooth'
-              });
-          });
-
-          // FAQ accordion
-          faqQuestions.forEach(question => {
-              question.addEventListener('click', () => {
-                  const answer = question.nextElementSibling;
-                  const icon = question.querySelector('i');
-
-                  // Toggle the open class
-                  answer.classList.toggle('open');
-
-                  // Rotate the icon
-                  if (answer.classList.contains('open')) {
-                      icon.style.transform = 'rotate(180deg)';
-                  } else {
-                      icon.style.transform = 'rotate(0deg)';
-                  }
-              });
-          });
-
-          // Contact form
-          if (contactForm) {
-              contactForm.addEventListener('submit', (e) => {
-                  e.preventDefault();
-                  alert('Thank you for your message! We will get back to you soon.');
-                  contactForm.reset();
-              });
-          }
-
-          // Smooth scrolling for anchor links
-          document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-              anchor.addEventListener('click', function (e) {
-                  e.preventDefault();
-
-                  const targetId = this.getAttribute('href');
-                  if (targetId === '#') return;
-
-                  const targetElement = document.querySelector(targetId);
-                  if (targetElement) {
-                      targetElement.scrollIntoView({
-                          behavior: 'smooth'
-                      });
-                  }
-              });
-          });
-      }
-
-      // --- PAGE NAVIGATION ---
-      function showPage(pageId) {
-          // Hide all main pages
-          Object.values(pages).forEach(page => page.classList.add('hidden'));
-
-          // Show the requested main page
-          const pageToShow = pages[pageId];
-          if (pageToShow) {
-              pageToShow.classList.remove('hidden');
-              if(pageId === 'login' || pageId === 'signup') {
-                  pageToShow.classList.add('flex');
-              }
-              if(pageId === 'landing') {
-                  pageToShow.classList.add('flex'); // it's a flex-col
-              }
-              if(pageId === 'main') {
-                  pageToShow.classList.add('block'); // Main app shell
-              }
-          }
-          lucide.createIcons();
-      }
-
-      function showAppPage(pageId) {
-          // Hide all app pages
-          Object.values(appPages).forEach(page => page.classList.add('hidden'));
-
-          // Show the requested app page
-          const pageToShow = appPages[pageId];
-          if (pageToShow) {
-              pageToShow.classList.remove('hidden');
-          }
-
-          // Update nav links
-          navLinks.forEach(link => {
-              link.classList.toggle('nav-active', link.dataset.page === pageId);
-          });
-
-          // Update mobile page title
-          const activeLink = document.querySelector(`.nav-link[data-page="${pageId}"]`);
-          if (activeLink) {
-              pageTitle.textContent = activeLink.textContent.trim();
-          }
-
-          // Call the specific render function for the page
-          if (pageId === 'home') renderHomeDashboard();
-          if (pageId === 'subscription') loadDashboardData();
-          if (pageId === 'pantry') renderPantryItems();
-          if (pageId === 'bills') renderBills();
-          if (pageId === 'expenses') renderExpenses();
-          lucide.createIcons();
-      }
-
-      // --- DARK MODE ---
-      function applyDarkMode() {
-          if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-              htmlEl.classList.add('dark');
-          } else {
-              htmlEl.classList.remove('dark');
-          }
-      }
-
-      // --- SIDEBAR ---
-      function toggleSidebar(show) {
-          if (show) {
-              sidebar.classList.remove('-translate-x-full');
-              sidebarOverlay.classList.remove('hidden');
-          } else {
-              sidebar.classList.add('-translate-x-full');
-              sidebarOverlay.classList.add('hidden');
-          }
-      }
-
-      // --- GLOBAL LISTENERS ---
-      function initGlobalListeners() {
-          mainDarkModeToggle.addEventListener('click', () => {
-              if (htmlEl.classList.contains('dark')) {
-                  htmlEl.classList.remove('dark');
-                  localStorage.theme = 'light';
-              } else {
-                  htmlEl.classList.add('dark');
-                  localStorage.theme = 'dark';
-              }
-              // Re-render all possible pages
-              renderHomeDashboard();
-              loadDashboardData();
-              renderBills();
-              renderExpenses();
-          });
-          // --- AUTH ---
-          // ENHANCED: Login form with API
-          loginForm.addEventListener('submit', async (e) => {
-              e.preventDefault();
-              const email = loginForm.querySelector('#login-email').value;
-              const password = loginForm.querySelector('#login-password').value;
-
-              try {
-                  const result = await handleLoginWithAPI(email, password);
-                  userNameEl.textContent = result.name;
-                  showPage('main');
-                  showAppPage('home');
-                  await loadAllData();
-              } catch (error) {
-                  // Login failed - error is already shown in handleLoginWithAPI
-              }
-          });
-
-          // ENHANCED: Signup form with API
-          signupForm.addEventListener('submit', async (e) => {
-              e.preventDefault();
-              const name = signupForm.querySelector('#signup-name').value;
-              const email = signupForm.querySelector('#signup-email').value;
-              const password = signupForm.querySelector('#signup-password').value;
-
-              try {
-                  const result = await handleSignupWithAPI(name, email, password);
-                  userNameEl.textContent = result.name;
-                  showPage('main');
-                  showAppPage('home');
-                  await loadAllData();
-              } catch (error) {
-                  // Signup failed - error is already shown in handleSignupWithAPI
-              }
-          });
-
-          logoutButton.addEventListener('click', () => {
-              // Clear local storage on logout
-              localStorage.removeItem('authToken');
-              localStorage.removeItem('userName');
-              localStorage.removeItem('userEmail');
-
-              loginForm.reset();
-              signupForm.reset();
-              userNameEl.textContent = 'User'; // Reset username
-              showPage('landing'); // Go to landing
-          });
-
-          // --- GLOBAL NAVIGATION ---
-          goToSignupButton.addEventListener('click', () => showPage('signup'));
-          goToLoginButton.addEventListener('click', () => showPage('login'));
-
-          // Landing Page Listeners
-          goToLoginFromLanding.addEventListener('click', () => showPage('login'));
-          goToSignupFromLanding.addEventListener('click', () => showPage('signup'));
-          goToLoginFromLandingMobile.addEventListener('click', () => showPage('login'));
-          goToSignupFromLandingMobile.addEventListener('click', () => showPage('signup'));
-          goToSignupFromLandingHero.addEventListener('click', () => showPage('signup'));
-
-          navLinks.forEach(link => {
-              link.addEventListener('click', (e) => {
-                  e.preventDefault();
-                  const pageId = link.dataset.page;
-                  showAppPage(pageId);
-                  toggleSidebar(false); // Close sidebar on mobile nav
-              });
-          });
-
-          // --- SIDEBAR ---
-          openSidebarButton.addEventListener('click', () => toggleSidebar(true));
-          closeSidebarButton.addEventListener('click', () => toggleSidebar(false));
-          sidebarOverlay.addEventListener('click', () => toggleSidebar(false));
-
-          // --- MODAL CLOSE ---
-          modalCloseButtons.forEach(btn => {
-              btn.addEventListener('click', () => {
-                  btn.closest('.fixed').classList.add('hidden');
-              });
-          });
-      }
-
-      // ===========================================
-      // === HOME DASHBOARD APP ====================
-      // ===========================================
-
-      // --- Elements ---
-      const homeIncomeEl = document.getElementById('homeIncome');
-      const homeExpensesEl = document.getElementById('homeExpenses');
-      const homeBalanceEl = document.getElementById('homeBalance');
-      const openIncomeModalBtn = document.getElementById('openIncomeModal');
-      const incomeForm = document.getElementById('incomeForm');
-      const monthlyIncomeInput = document.getElementById('monthly-income');
-      const upcomingBillsContainer = document.getElementById('upcomingBillsContainer');
-      const expiringItemsContainer = document.getElementById('expiringItemsContainer');
-      const recentExpensesContainer = document.getElementById('recentExpensesContainer');
-
-      function initHomeDashboardListeners() {
-          openIncomeModalBtn.addEventListener('click', () => {
-              monthlyIncomeInput.value = totalIncome;
-              modals.income.classList.remove('hidden');
-          });
-
-          // ENHANCED: Income form with API
-          incomeForm.addEventListener('submit', async (e) => {
-              e.preventDefault();
-              const income = parseFloat(monthlyIncomeInput.value) || 0;
-
-              try {
-                  await ApiService.updateIncome(income);
-                  totalIncome = income;
-                  renderHomeDashboard();
-                  modals.income.classList.add('hidden');
-                  showMessage('Income updated!', 'success');
-              } catch (error) {
-                  showMessage('Failed to update income', 'error');
-              }
-          });
-      }
-
-      function renderHomeDashboard() {
-          // 1. Calculate Expenses
-          let totalMonthlyExpense = 0;
-
-          // Subs
-          allSubscriptions.forEach(sub => {
-              if (sub.cycle === 'monthly') totalMonthlyExpense += sub.price;
-              else if (sub.cycle === 'yearly') totalMonthlyExpense += sub.price / 12;
-              else if (sub.cycle === 'quarterly') totalMonthlyExpense += sub.price / 3;
-          });
-
-          // Bills (assuming they are monthly)
-          allBills.forEach(bill => {
-              totalMonthlyExpense += bill.amount;
-          });
-
-          // Expenses (for current month)
-          const currentMonth = new Date().getMonth();
-          const currentYear = new Date().getFullYear();
-          allExpenses.forEach(exp => {
-              const expenseDate = new Date(exp.date);
-              if (expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear) {
-                  totalMonthlyExpense += exp.amount;
-              }
-          });
-
-          // NEW: Add pantry items as expenses (only if they were purchased this month)
-          const currentMonthPantryItems = allItems.filter(item => {
-              const itemDate = new Date(item.expiry);
-              return itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear;
-          });
-
-          const pantryExpenseEstimate = currentMonthPantryItems.length * 100; // ₹100 per item estimate
-          totalMonthlyExpense += pantryExpenseEstimate;
-
-          // 2. Calculate Balance
-          const balance = totalIncome - totalMonthlyExpense;
-
-          // 3. Update UI
-          homeIncomeEl.textContent = `₹${totalIncome.toFixed(2)}`;
-          homeExpensesEl.textContent = `₹${totalMonthlyExpense.toFixed(2)}`;
-          homeBalanceEl.textContent = `₹${balance.toFixed(2)}`;
-
-          if (balance < 0) {
-              homeBalanceEl.classList.remove('text-gray-700', 'dark:text-gray-200');
-              homeBalanceEl.classList.add('text-red-600', 'dark:text-red-400');
-          } else {
-              homeBalanceEl.classList.add('text-gray-700', 'dark:text-gray-200');
-              homeBalanceEl.classList.remove('text-red-600', 'dark:text-red-400');
-          }
-
-          // 4. Render dynamic sections
-          renderUpcomingBills();
-          renderExpiringItems();
-          renderRecentExpenses();
-      }
-
-      function renderUpcomingBills() {
-          upcomingBillsContainer.innerHTML = '';
-
-          // Get upcoming bills (unpaid and due within the next 30 days)
-          const today = new Date();
-          const next30Days = new Date();
-          next30Days.setDate(today.getDate() + 30);
-
-          const upcomingBills = allBills.filter(bill => {
-              const dueDate = new Date(bill.dueDate);
-              return bill.status === 'Unpaid' && dueDate >= today && dueDate <= next30Days;
-          });
-
-          if (upcomingBills.length === 0) {
-              upcomingBillsContainer.innerHTML = `
-                  <div id="billsPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-                      <p class="text-gray-500 dark:text-gray-400">No upcoming bills.</p>
-                  </div>
-              `;
-              return;
-          }
-
-          // Sort by due date
-          upcomingBills.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-          // Render bills
-          upcomingBills.forEach(bill => {
-              const billCard = document.createElement('div');
-              billCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
-              billCard.innerHTML = `
-                  <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="${bill.name} Bill" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
-                  <div class="relative z-10">
-                      <h3 class="text-lg font-semibold">${bill.name}</h3>
-                      <p class="text-xl font-bold text-red-600 dark:text-red-400">₹${bill.amount.toFixed(2)}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">Due: ${new Date(bill.dueDate).toLocaleDateString()}</p>
-                  </div>
-              `;
-              upcomingBillsContainer.appendChild(billCard);
-          });
-      }
-
-      function renderExpiringItems() {
-          expiringItemsContainer.innerHTML = '';
-
-          // Get items expiring within the next 7 days
-          const today = new Date();
-          const next7Days = new Date();
-          next7Days.setDate(today.getDate() + 7);
-
-          const expiringItems = allItems.filter(item => {
-              const expiryDate = new Date(item.expiry);
-              return expiryDate >= today && expiryDate <= next7Days;
-          });
-
-          if (expiringItems.length === 0) {
-              expiringItemsContainer.innerHTML = `
-                  <div id="expiringPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-                      <p class="text-gray-500 dark:text-gray-400">No items expiring soon.</p>
-                  </div>
-              `;
-              return;
-          }
-
-          // Sort by expiry date
-          expiringItems.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
-
-          // Render items
-          expiringItems.forEach(item => {
-              const expiryDate = new Date(item.expiry);
-              const daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
-
-              const itemCard = document.createElement('div');
-              itemCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
-              itemCard.innerHTML = `
-                  <img src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bWlsa3xlbnwwfHwwfHx8MA%3D%3D" alt="${item.name}" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
-                  <div class="relative z-10">
-                      <h3 class="text-lg font-semibold">${item.name}</h3>
-                      <p class="text-sm ${daysLeft <= 1 ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}">Expires in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">${item.quantity}</p>
-                  </div>
-              `;
-              expiringItemsContainer.appendChild(itemCard);
-          });
-      }
-
-      function renderRecentExpenses() {
-          recentExpensesContainer.innerHTML = '';
-
-          // Get recent expenses (last 5)
-          const recentExpenses = [...allExpenses]
-              .sort((a, b) => new Date(b.date) - new Date(a.date))
-              .slice(0, 5);
-
-          if (recentExpenses.length === 0) {
-              recentExpensesContainer.innerHTML = `
-                  <div id="expensesPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
-                      <p class="text-gray-500 dark:text-gray-400">No recent expenses.</p>
-                  </div>
-              `;
-              return;
-          }
-
-          // Render expenses
-          recentExpenses.forEach(expense => {
-              const expenseCard = document.createElement('div');
-              expenseCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
-
-              // Select appropriate image based on category
-              let imageUrl = 'https://plus.unsplash.com/premium_photo-1741657668295-86ed0b179d08?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8d2Vla2x5JTIwZ3JvY2VyaWVzfGVufDB8fDB8fHww';
-              if (expense.category === 'Transport') {
-                  imageUrl = 'https://images.unsplash.com/photo-1709536240401-ae8f6ca55e18?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGV0cm9sfGVufDB8fDB8fHww';
-              } else if (expense.category === 'School Fees') {
-                  imageUrl = 'https://media.istockphoto.com/id/1235608919/photo/children-girls-and-boys-sitting-and-reading-books-group-study-stock-photo.webp?a=1&b=1&s=612x612&w=0&k=20&c=a2eQkiYw-SZ_yoNSdaQRiiwU0TnaqtUl3TPZYyjK9qY=';
-              }
-
-              expenseCard.innerHTML = `
-                  <img src="${imageUrl}" alt="${expense.name}" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
-                  <div class="relative z-10">
-                      <h3 class="text-lg font-semibold">${expense.name}</h3>
-                      <p class="text-xl font-bold text-yellow-600 dark:text-yellow-400">₹${expense.amount.toFixed(2)}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">${new Date(expense.date).toLocaleDateString()}</p>
-                      <span class="inline-block mt-2 text-xs font-semibold px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full">${expense.category}</span>
-                  </div>
-              `;
-              recentExpensesContainer.appendChild(expenseCard);
-          });
-      }
-
-      // ===========================================
-      // === SUBSCRIPTION TRACKER APP ==============
-      // ===========================================
-
-      // --- Elements ---
-      const totalMonthlyEl = document.getElementById('totalMonthly');
-      const nextRenewalEl = document.getElementById('nextRenewal');
-      const activeSubsEl = document.getElementById('activeSubs');
-      const totalYearlyEl = document.getElementById('totalYearly');
-      const savingsSuggestionEl = document.getElementById('savingsSuggestion');
-      const subscriptionListEl = document.getElementById('subscriptionList');
-      const subsPlaceholderEl = document.getElementById('subsPlaceholder');
-      const subsNoResultsEl = document.getElementById('subsNoResults');
-      const notificationToggle = document.getElementById('notificationToggle');
-      const notificationPanel = document.getElementById('notificationPanel');
-      const notificationList = document.getElementById('notificationList');
-      const notificationAlert = document.getElementById('notificationAlert');
-      const openSubModalButton = document.getElementById('openAddModal');
-      const subscriptionForm = document.getElementById('subscriptionForm');
-      const subModalTitle = document.getElementById('subModalTitle');
-      const deleteSubButton = document.getElementById('deleteSubButton');
-      const chartCanvas = document.getElementById('categoryChart').getContext('2d');
-      const trendChartCanvas = document.getElementById('spendingTrendChart').getContext('2d');
-      const openSmartAddModalButton = document.getElementById('openSmartAddModal');
-      const smartAddGrid = document.getElementById('smartAddGrid');
-
-      // FAB Elements
-      const fabToggle = document.getElementById('fabToggle');
-      const fabMenu = document.getElementById('fabMenu');
-      const fabIcon = fabToggle.querySelector('i');
-
-      // Search/Filter Elements
-      const subSearchInput = document.getElementById('subSearchInput');
-      const subCategoryFilter = document.getElementById('subCategoryFilter');
-
-      // Form Validation Elements
-      const subNameInput = document.getElementById('sub-name');
-      const subPriceInput = document.getElementById('sub-price');
-      const subNameError = document.getElementById('sub-name-error');
-      const subPriceError = document.getElementById('sub-price-error');
-
-      function initSubscriptionListeners() {
-          openSubModalButton.addEventListener('click', () => {
-              openSubscriptionModal();
-              toggleFab(false);
-          });
-          openSmartAddModalButton.addEventListener('click', () => {
-              openSmartAddModal();
-              toggleFab(false);
-          });
-
-          // ENHANCED: Subscription form with API
-          subscriptionForm.addEventListener('submit', async (e) => {
-              e.preventDefault();
-              // Run validation
-              if (!validateSubForm()) {
-                  return;
-              }
-
-              const formData = new FormData(subscriptionForm);
-              const sub = Object.fromEntries(formData.entries());
-              sub.price = parseFloat(sub.price);
-
-              try {
-                  await handleSaveSubscriptionWithAPI(sub);
-                  modals.subscription.classList.add('hidden');
-              } catch (error) {
-                  // Error is already shown in handleSaveSubscriptionWithAPI
-              }
-          });
-
-          // ENHANCED: Delete subscription with API
-          deleteSubButton.addEventListener('click', async () => {
-              const subId = document.getElementById('sub-id').value;
-              if (!subId) return;
-
-              try {
-                  await handleDeleteSubscriptionWithAPI(subId);
-                  modals.subscription.classList.add('hidden');
-              } catch (error) {
-                  // Error is already shown in handleDeleteSubscriptionWithAPI
-              }
-          });
-
-          notificationToggle.addEventListener('click', (e) => { e.stopPropagation(); notificationPanel.classList.toggle('hidden'); });
-
-          document.addEventListener('click', (e) => {
-              if (notificationPanel && !notificationPanel.classList.contains('hidden')) {
-                  if (!notificationPanel.contains(e.target) && e.target !== notificationToggle && !notificationToggle.contains(e.target)) {
-                      notificationPanel.classList.add('hidden');
-                  }
-              }
-
-              // Close FAB menu if clicking outside
-              if (fabMenu && !fabMenu.classList.contains('scale-0')) {
-                  if (!fabMenu.contains(e.target) && !fabToggle.contains(e.target)) {
-                      toggleFab(false);
-                  }
-              }
-          });
-
-          // FAB Listener
-          fabToggle.addEventListener('click', () => {
-              toggleFab(fabMenu.classList.contains('scale-0'));
-          });
-
-          // Search/Filter Listeners
-          subSearchInput.addEventListener('input', renderSubscriptionList);
-          subCategoryFilter.addEventListener('change', renderSubscriptionList);
-
-          // Form Validation Listeners
-          subNameInput.addEventListener('input', () => validateSubForm());
-          subPriceInput.addEventListener('input', () => validateSubForm());
-      }
-
-      function toggleFab(show) {
-          if (show) {
-              fabMenu.classList.remove('scale-0');
-              fabIcon.classList.add('rotate-45');
-          } else {
-              fabMenu.classList.add('scale-0');
-              fabIcon.classList.remove('rotate-45');
-          }
-      }
-
-      // Form Validation
-      function validateSubForm() {
-          let isValid = true;
-
-          // Validate Name
-          if (subNameInput.value.trim() === '') {
-              subNameError.classList.remove('hidden');
-              subNameInput.classList.add('border-red-500');
-              isValid = false;
-          } else {
-              subNameError.classList.add('hidden');
-              subNameInput.classList.remove('border-red-500');
-          }
-
-          // Validate Price
-          if (subPriceInput.value === '' || parseFloat(subPriceInput.value) < 0) {
-              subPriceError.classList.remove('hidden');
-              subPriceInput.classList.add('border-red-500');
-              isValid = false;
-          } else {
-              subPriceError.classList.add('hidden');
-              subPriceInput.classList.remove('border-red-500');
-          }
-
-          return isValid;
-      }
-
-      function resetSubFormValidation() {
-          subNameError.classList.add('hidden');
-          subNameInput.classList.remove('border-red-500');
-          subPriceError.classList.add('hidden');
-          subPriceInput.classList.remove('border-red-500');
-      }
-
-      function loadDashboardData() {
-          const summary = calculateSummary(allSubscriptions);
-          updateDashboardUI(summary);
-          renderSubscriptionList();
-      }
-
-      // Separate function to render the list based on filters
-      function renderSubscriptionList() {
-          const searchTerm = subSearchInput.value.toLowerCase();
-          const category = subCategoryFilter.value;
-
-          const filteredSubs = allSubscriptions.filter(sub => {
-              const nameMatch = sub.name.toLowerCase().includes(searchTerm);
-              const categoryMatch = (category === 'all' || sub.category === category);
-              return nameMatch && categoryMatch;
-          });
-
-          subscriptionListEl.innerHTML = '';
-
-          if (allSubscriptions.length === 0) {
-              subscriptionListEl.appendChild(subsPlaceholderEl);
-              subsPlaceholderEl.classList.remove('hidden');
-              subsNoResultsEl.classList.add('hidden');
-          } else if (filteredSubs.length === 0) {
-              subscriptionListEl.appendChild(subsNoResultsEl);
-              subsNoResultsEl.classList.remove('hidden');
-              subsPlaceholderEl.classList.add('hidden');
-          } else {
-              subsPlaceholderEl.classList.add('hidden');
-              subsNoResultsEl.classList.add('hidden');
-              filteredSubs.sort((a,b) => new Date(a.nextDue) - new Date(b.nextDue));
-              filteredSubs.forEach(sub => subscriptionListEl.appendChild(createSubscriptionCard(sub)));
-          }
-          lucide.createIcons();
-      }
-
-      function createOrUpdateChart(categories, data) {
-          const isDark = htmlEl.classList.contains('dark');
-          const labelColor = isDark ? '#cbd5e1' : '#475569';
-          if (categoryChart) categoryChart.destroy();
-          if (data.length === 0 || data.every(item => item === 0)) {
-              categories = ['No Data']; data = [1];
-          }
-          categoryChart = new Chart(chartCanvas, {
-              type: 'pie',
-              data: {
-                  labels: categories,
-                  datasets: [{
-                      data: data,
-                      backgroundColor: ['#2563eb', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'],
-                      borderColor: isDark ? '#1e293b' : '#ffffff', borderWidth: 2,
-                  }]
-              },
-              options: {
-                  responsive: true, maintainAspectRatio: false,
-                  plugins: { legend: { position: 'bottom', labels: { color: labelColor, font: { family: "'Inter', sans-serif" }}}}
-              }
-          });
-      }
-
-      function createOrUpdateLineChart(labels, data) {
-          const isDark = htmlEl.classList.contains('dark');
-          const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-          const labelColor = isDark ? '#cbd5e1' : '#475569';
-          if (spendingTrendChart) spendingTrendChart.destroy();
-          spendingTrendChart = new Chart(trendChartCanvas, {
-              type: 'line',
-              data: {
-                  labels: labels,
-                  datasets: [{
-                      label: 'Monthly Spending', data: data, fill: false, borderColor: '#2563eb',
-                      tension: 0.1, pointBackgroundColor: '#2563eb', pointRadius: 4,
-                  }]
-              },
-              options: {
-                  responsive: true, maintainAspectRatio: false,
-                  plugins: { legend: { display: false } },
-                  scales: {
-                      y: { beginAtZero: true, ticks: { color: labelColor, callback: (v) => '₹' + v }, grid: { color: gridColor } },
-                      x: { ticks: { color: labelColor }, grid: { color: gridColor } }
-                  }
-              }
-          });
-      }
-
-      function calculateSummary(subs) {
-          let totalMonthly = 0, nextRenewalDate = null, nextRenewalName = "N/A", activeCount = 0, totalYearly = 0;
-          const categoryTotals = {};
-          const today = new Date(); today.setHours(0,0,0,0);
-          subs.forEach(sub => {
-              const nextDue = new Date(sub.nextDue);
-              if (sub.cycle !== 'onetime' && nextDue >= today) activeCount++;
-              if (nextDue >= today && (nextRenewalDate === null || nextDue < nextRenewalDate)) {
-                  nextRenewalDate = nextDue; nextRenewalName = sub.name;
-              }
-              let monthlyCost = 0, yearlyCost = 0;
-              if(sub.cycle === 'monthly') { monthlyCost = sub.price; yearlyCost = sub.price * 12; }
-              else if (sub.cycle === 'yearly') { monthlyCost = sub.price / 12; yearlyCost = sub.price; }
-              else if (sub.cycle === 'quarterly') { monthlyCost = sub.price / 3; yearlyCost = sub.price * 4; }
-              totalMonthly += monthlyCost; totalYearly += yearlyCost;
-              categoryTotals[sub.category] = (categoryTotals[sub.category] || 0) + yearlyCost;
-          });
-          const nextRenewalText = nextRenewalDate ? `${nextRenewalName} (${nextRenewalDate.toLocaleDateString()})` : "No upcoming";
-          return {
-              totalMonthly: totalMonthly.toFixed(2), totalYearly: totalYearly.toFixed(2), activeCount, nextRenewalText,
-              categoryLabels: Object.keys(categoryTotals), categoryData: Object.values(categoryTotals)
-          };
-      }
-
-      function updateDashboardUI(summary) {
-          totalMonthlyEl.textContent = `₹${summary.totalMonthly}`;
-          totalYearlyEl.textContent = `₹${summary.totalYearly}`;
-          activeSubsEl.textContent = summary.activeCount;
-          nextRenewalEl.textContent = summary.nextRenewalText;
-          if (summary.totalMonthly > 5000) savingsSuggestionEl.textContent = `Review 'Software' and 'Streaming' categories for savings.`;
-          else if (allSubscriptions.length > 5) savingsSuggestionEl.textContent = `You have ${allSubscriptions.length} subscriptions. Review and cancel any unused ones.`;
-          else savingsSuggestionEl.textContent = "Your spending looks great!";
-
-          createOrUpdateChart(summary.categoryLabels, summary.categoryData);
-          const trendLabels = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
-          const trendData = [550.50, 600.20, 750.00, 700.00, 800.75, summary.totalMonthly];
-          createOrUpdateLineChart(trendLabels, trendData);
-          updateNotificationPanel(allSubscriptions);
-      }
-
-      function createSubscriptionCard(sub) {
-          const card = document.createElement('div');
-          card.className = 'sub-card bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col justify-between overflow-hidden';
-          const today = new Date(); today.setHours(0,0,0,0);
-          const nextDue = new Date(sub.nextDue);
-          const daysLeft = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-          let statusColor = 'text-green-600 dark:text-green-400', statusText = `Renews in ${daysLeft} days`, borderColor = 'border-green-500';
-          if (daysLeft < 0) { statusColor = 'text-gray-500 dark:text-gray-400'; statusText = 'Expired'; borderColor = 'border-gray-400'; }
-          else if (daysLeft <= 5) { statusColor = 'text-orange-600 dark:text-orange-400'; statusText = `Renews in ${daysLeft} days!`; borderColor = 'border-orange-500'; }
-          if (sub.cycle === 'onetime') { statusColor = 'text-blue-600 dark:text-blue-400'; statusText = 'One-time purchase'; borderColor = 'border-blue-500'; }
-
-          card.innerHTML = `
-              <div class="p-5">
-              <div class="flex justify-between items-start mb-2">
-                  <div class="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full">
-                      <i data-lucide="${sub.icon || 'wallet'}" class="w-6 h-6"></i>
-                  </div>
-                  <span class="font-bold text-xl">${sub.currency}${sub.price}</span>
-              </div>
-              <h4 class="text-lg font-semibold truncate mt-3">${sub.name}</h4>
-              <p class="text-sm ${statusColor} font-medium">${statusText}</p>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Billed ${sub.cycle}</p>
-              <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1"><i data-lucide="credit-card" class="w-4 h-4 mr-2 flex-shrink-0"></i> ${sub.paymentMethod || 'No method'}</p>
-              ${sub.notes ? `<div class="mt-2 p-2 bg-gray-50 dark:bg-slate-700 rounded-md"><p class="text-xs text-gray-600 dark:text-gray-300 italic">${sub.notes}</p></div>` : ''}
-              ${sub.receiptUrl ? `<div class="mt-2"><a href="${sub.receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i> View Receipt</a></div>` : ''}
-          </div>
-          <button data-id="${sub.id}" class="edit-sub-btn w-full text-center text-sm font-medium text-blue-600 dark:text-blue-400 p-3 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
-              View / Edit
-          </button>`;
-
-          card.style.borderTop = `4px solid var(--tw-color)`;
-          card.style.borderColor = borderColor.split('-')[1] === 'gray' ? '#9ca3af' :
-                                  borderColor.split('-')[1] === 'orange' ? '#f97316' :
-                                  borderColor.split('-')[1] === 'blue' ? '#3b82f6' : '#22c55e';
-
-          const editBtn = card.querySelector('.edit-sub-btn');
-          if (editBtn) {
-              editBtn.addEventListener('click', () => openSubscriptionModal(allSubscriptions.find(s => s.id === parseInt(sub.id)) ));
-          }
-          return card;
-      }
-
-      function openSubscriptionModal(sub = null) {
-          subscriptionForm.reset();
-          resetSubFormValidation();
-
-          if (sub) {
-              subModalTitle.textContent = sub.id ? "Edit Subscription" : "Add New Subscription";
-              deleteSubButton.classList.toggle('hidden', !sub.id);
-
-              document.getElementById('sub-id').value = sub.id || "";
-              document.getElementById('sub-name').value = sub.name || "";
-              document.getElementById('sub-price').value = sub.price || "";
-              document.getElementById('sub-currency').value = sub.currency || "₹";
-              document.getElementById('sub-cycle').value = sub.cycle || "monthly";
-              document.getElementById('sub-next-due').value = sub.nextDue || todayString;
-              document.getElementById('sub-category').value = sub.category || "Other";
-              document.getElementById('sub-payment').value = sub.paymentMethod || 'Other';
-              document.getElementById('sub-notes').value = sub.notes || "";
-              document.getElementById('sub-receipt-url').value = sub.receiptUrl || '';
-              document.getElementById('sub-icon').value = sub.icon || 'wallet';
-          } else {
-              subModalTitle.textContent = "Add New Subscription";
-              deleteSubButton.classList.add('hidden');
-              document.getElementById('sub-id').value = "";
-              document.getElementById('sub-next-due').value = todayString;
-              document.getElementById('sub-icon').value = "wallet";
-          }
-          modals.subscription.classList.remove('hidden');
-      }
-
-      function openSmartAddModal() {
-          smartAddGrid.innerHTML = '';
-          predefinedSubscriptions.forEach(sub => {
-              const card = document.createElement('button');
-              card.className = "group text-left p-4 bg-white dark:bg-slate-700 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition-all";
-              card.innerHTML = `
-                  <div class="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full w-10 h-10 flex items-center justify-center">
-                      <i data-lucide="${sub.icon}" class="w-5 h-5"></i>
-                  </div>
-                  <h4 class="font-semibold mt-3 truncate">${sub.name}</h4>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">₹${sub.price}/mo</p>
-              `;
-              card.addEventListener('click', () => {
-                  openSubscriptionModal({
-                      ...sub,
-                      nextDue: todayString,
-                      currency: "₹",
-                      cycle: "monthly"
-                  });
-                  modals.smartAdd.classList.add('hidden');
-              });
-              smartAddGrid.appendChild(card);
-          });
-          lucide.createIcons();
-          modals.smartAdd.classList.remove('hidden');
-      }
-
-      function updateNotificationPanel(subs) {
-          notificationList.innerHTML = ''; let notificationsFound = false;
-          const today = new Date(); today.setHours(0,0,0,0);
-          subs.forEach(sub => {
-              const nextDue = new Date(sub.nextDue);
-              const daysLeft = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-              if (daysLeft >= 0 && daysLeft <= 5) {
-                  notificationsFound = true;
-                  const li = document.createElement('div');
-                  li.className = 'p-3 hover:bg-gray-50 dark:hover:bg-slate-700 border-b dark:border-slate-700 last:border-b-0 cursor-pointer';
-                  li.innerHTML = `<p class="text-sm font-medium">${sub.name} is renewing soon!</p><p class="text-xs text-gray-500 dark:text-gray-400">${sub.currency}${sub.price} is due in ${daysLeft === 0 ? 'today' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`}.</p>`;
-                  li.addEventListener('click', () => {
-                      showAppPage('subscription');
-                      openSubscriptionModal(sub);
-                      notificationPanel.classList.add('hidden');
-                  });
-                  notificationList.appendChild(li);
-              }
-          });
-          if (!notificationsFound) {
-              notificationAlert.classList.add('hidden');
-              notificationList.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No new notifications.</p>';
-          } else { notificationAlert.classList.remove('hidden'); }
-      }
-
-      // ===========================================
-      // === PANTRY MANAGER APP ====================
-      // ===========================================
-
-      // --- Elements ---
-      const pantryTabButtons = document.querySelectorAll('.pantry-tab-button');
-      const pantryTabContents = document.querySelectorAll('.pantry-tab-content');
-      const emptyPlaceholder = document.getElementById('emptyPlaceholder');
-      const listsContainer = document.getElementById('itemListsContainer');
-      const openItemModalButton = document.getElementById('openAddItemModal');
-      const itemForm = document.getElementById('itemForm');
-      const itemModalTitle = document.getElementById('itemModalTitle');
-      const locationSelect = document.getElementById('item-location');
-      const expiryInput = document.getElementById('item-expiry');
-
-      let currentPantryTab = 'fridge';
-
-      function initPantryListeners() {
-          pantryTabButtons.forEach(button => button.addEventListener('click', handlePantryTabClick));
-          openItemModalButton.addEventListener('click', openItemModal);
-
-          // ENHANCED: Pantry item form with API
-          itemForm.addEventListener('submit', async (e) => {
-              e.preventDefault();
-              const formData = new FormData(itemForm);
-              const item = Object.fromEntries(formData.entries());
-
-              try {
-                  setLoading(true);
-                  await ApiService.createPantryItem(item);
-                  showMessage('Item added!', 'success');
-
-                  if (item.location !== currentPantryTab) {
-                      currentPantryTab = item.location;
-                      pantryTabButtons.forEach(button => {
-                          if (button.dataset.tab === currentPantryTab) {
-                              button.classList.add('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                              button.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
-                          } else {
-                              button.classList.remove('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                              button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
-                          }
-                      });
-                  }
-
-                  await loadAllData();
-                  modals.pantry.classList.add('hidden');
-              } catch (error) {
-                  showMessage('Failed to add item', 'error');
-              } finally {
-                  setLoading(false);
-              }
-          });
-      }
-
-      function handlePantryTabClick(e) {
-          const clickedTab = e.currentTarget.dataset.tab;
-
-          pantryTabButtons.forEach(button => {
-              if (button.dataset.tab === clickedTab) {
-                  button.classList.add('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                  button.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
-              } else {
-                  button.classList.remove('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                  button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
-              }
-          });
-
-          currentPantryTab = clickedTab;
-          renderPantryItems();
-      }
-
-      function renderPantryItems() {
-          pantryTabContents.forEach(content => {
-              content.classList.toggle('hidden', content.id !== `${currentPantryTab}List`);
-          });
-
-          const listEl = document.getElementById(`${currentPantryTab}List`);
-          if (!listEl) return;
-          listEl.innerHTML = '';
-          const itemsForTab = allItems.filter(item => item.location === currentPantryTab);
-
-          if (itemsForTab.length === 0) {
-              emptyPlaceholder.classList.remove('hidden');
-              listsContainer.classList.add('hidden');
-          } else {
-              emptyPlaceholder.classList.add('hidden');
-              listsContainer.classList.remove('hidden');
-              itemsForTab.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
-              itemsForTab.forEach(item => listEl.appendChild(createItemCard(item)));
-          }
-          lucide.createIcons();
-      }
-
-      function getExpiryStatus(expiryDate) {
-          const today = new Date(); today.setHours(0, 0, 0, 0);
-          const expiry = new Date(expiryDate);
-          const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          if (daysLeft < 0) return { text: 'Expired', color: 'red', days: daysLeft };
-          if (daysLeft === 0) return { text: 'Expires Today', color: 'red', days: daysLeft };
-          if (daysLeft <= 3) return { text: `Expires in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`, color: 'orange', days: daysLeft };
-          return { text: `Expires in ${daysLeft} days`, color: 'green', days: daysLeft };
-      }
-
-      function createItemCard(item) {
-          const card = document.createElement('div');
-          const status = getExpiryStatus(item.expiry);
-          const colorClasses = { red: 'border-red-500', orange: 'border-orange-500', green: 'border-green-500' };
-          const textColorClasses = { red: 'text-red-600 dark:text-red-400', orange: 'text-orange-600 dark:text-orange-400', green: 'text-green-600 dark:text-green-400' };
-          card.className = `item-card bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex flex-col justify-between border-l-4 ${colorClasses[status.color]}`;
-          card.innerHTML = `
-              <div>
-              <div class="flex justify-between items-start">
-                  <h4 class="text-lg font-semibold truncate">${item.name}</h4>
-                  <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${item.quantity}</span>
-              </div>
-              <p class="text-sm ${textColorClasses[status.color]} font-medium mt-1">${status.text}</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Expiry: ${item.expiry}</p>
-          </div>
-          <button data-id="${item.id}" class="delete-item-btn mt-4 w-full text-center text-sm font-medium text-red-600 dark:text-red-400 hover:underline flex items-center justify-center">
-              <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i>
-              Delete
-          </button>`;
-
-          const deleteBtn = card.querySelector('.delete-item-btn');
-          if (deleteBtn) {
-              deleteBtn.addEventListener('click', async () => {
-                  const itemId = deleteBtn.dataset.id;
-                  try {
-                      setLoading(true);
-                      await handleDeletePantryItemWithAPI(itemId);
-                  } catch (error) {
-                      // Error handled in the function
-                  } finally {
-                      setLoading(false);
-                  }
-              });
-          }
-          return card;
-      }
-
-      function openItemModal() {
-          itemForm.reset();
-          itemModalTitle.textContent = "Add New Item";
-          locationSelect.value = currentPantryTab;
-          expiryInput.value = todayString;
-          document.getElementById('item-id').value = "";
-          modals.pantry.classList.remove('hidden');
-      }
-
-      // ===========================================
-      // === BILL TRACKER APP ======================
-      // ===========================================
-
-      // --- Elements ---
-      const billListContainer = document.getElementById('billListContainer');
-      const billPlaceholder = document.getElementById('billPlaceholder');
-      const openAddBillModalBtn = document.getElementById('openAddBillModal');
-      const billForm = document.getElementById('billForm');
-      const billModalTitle = document.getElementById('billModalTitle');
-      const deleteBillButton = document.getElementById('deleteBillButton');
-
-      function initBillListeners() {
-          if (openAddBillModalBtn) {
-              openAddBillModalBtn.addEventListener('click', openBillModal);
-          }
-
-          // ENHANCED: Bill form with API
-          billForm.addEventListener('submit', async (e) => {
-              e.preventDefault();
-              const formData = new FormData(billForm);
-              const bill = Object.fromEntries(formData.entries());
-              bill.amount = parseFloat(bill.amount);
-
-              try {
-                  setLoading(true);
-                  if (bill.id) {
-                      await ApiService.updateBill(bill);
-                      showMessage('Bill updated!', 'success');
-                  } else {
-                      await ApiService.createBill(bill);
-                      showMessage('Bill added!', 'success');
-                  }
-                  await loadAllData();
-                  modals.bill.classList.add('hidden');
-              } catch (error) {
-                  showMessage('Failed to save bill', 'error');
-              } finally {
-                  setLoading(false);
-              }
-          });
-
-          // Delete bill button in modal
-          deleteBillButton.addEventListener('click', async () => {
-              const billId = document.getElementById('bill-id').value;
-              if (!billId) return;
-
-              try {
-                  await handleDeleteBillWithAPI(billId);
-                  modals.bill.classList.add('hidden');
-              } catch (error) {
-                  // Error already shown
-              }
-          });
-      }
-
-      function renderBills() {
-          billListContainer.innerHTML = '';
-          if (allBills.length === 0) {
-              billListContainer.appendChild(billPlaceholder);
-              billPlaceholder.classList.remove('hidden');
-          } else {
-              billPlaceholder.classList.add('hidden');
-              allBills.sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
-              allBills.forEach(bill => billListContainer.appendChild(createBillCard(bill)));
-          }
-          lucide.createIcons();
-      }
-
-      function createBillCard(bill) {
-          const card = document.createElement('div');
-          const isPaid = bill.status === 'Paid';
-          const statusColor = isPaid ? 'border-green-500' : 'border-red-500';
-          const statusText = isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
-
-          card.className = `bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex items-center justify-between border-l-4 ${statusColor}`;
-          card.innerHTML = `
-              <div class="flex-1">
-                  <h4 class="text-lg font-semibold">${bill.name}</h4>
-                  <p class="text-xl font-bold">₹${bill.amount.toFixed(2)}</p>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">Due: ${bill.dueDate}</p>
-              </div>
-              <div class="flex items-center space-x-2">
-                  ${isPaid ? `
-                      <span class="font-semibold ${statusText}">Paid</span>
-                  ` : `
-                      <button data-id="${bill.id}" class="mark-paid-btn inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600" title="Mark as Paid">
-                          <i data-lucide="check" class="w-4 h-4 mr-2"></i>
-                          Mark as Paid
-                      </button>
-                  `}
-                  <button data-id="${bill.id}" class="edit-bill-btn inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600" title="Edit Bill">
-                      <i data-lucide="edit-2" class="w-4 h-4 mr-2"></i>
-                      Edit
-                  </button>
-                  <button data-id="${bill.id}" class="delete-bill-btn inline-flex items-center rounded-md border border-red-300 dark:border-red-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-red-600 dark:text-red-400 shadow-sm hover:bg-red-50 dark:hover:bg-slate-600" title="Delete Bill">
-                      <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>
-                      Delete
-                  </button>
-              </div>
-          `;
-
-          const markPaidBtn = card.querySelector('.mark-paid-btn');
-          if (markPaidBtn) {
-              markPaidBtn.addEventListener('click', async () => {
-                  const billId = parseInt(markPaidBtn.dataset.id);
-                  try {
-                      setLoading(true);
-                      await ApiService.markBillPaid(billId);
-                      showMessage('Bill marked as paid!', 'success');
-                      await loadAllData();
-                  } catch (error) {
-                      showMessage('Failed to mark bill as paid', 'error');
-                  } finally {
-                      setLoading(false);
-                  }
-              });
-          }
-
-          const editBtn = card.querySelector('.edit-bill-btn');
-          if (editBtn) {
-              editBtn.addEventListener('click', () => {
-                  const bill = allBills.find(b => b.id === parseInt(editBtn.dataset.id));
-                  openBillModal(bill);
-              });
-          }
-
-          const deleteBtn = card.querySelector('.delete-bill-btn');
-          if (deleteBtn) {
-              deleteBtn.addEventListener('click', async () => {
-                  const billId = parseInt(deleteBtn.dataset.id);
-                  try {
-                      setLoading(true);
-                      await handleDeleteBillWithAPI(billId);
-                  } catch (error) {
-                      // Error handled
-                  } finally {
-                      setLoading(false);
-                  }
-              });
-          }
-
-          return card;
-      }
-
-      function openBillModal(bill = null) {
-          billForm.reset();
-
-          if (bill) {
-              billModalTitle.textContent = "Edit Bill";
-              deleteBillButton.classList.remove('hidden');
-
-              document.getElementById('bill-id').value = bill.id || "";
-              document.getElementById('bill-name').value = bill.name || "";
-              document.getElementById('bill-amount').value = bill.amount || "";
-              document.getElementById('bill-due-date').value = bill.dueDate || todayString;
-              document.getElementById('bill-status').value = bill.status || "Unpaid";
-          } else {
-              billModalTitle.textContent = "Add New Bill";
-              deleteBillButton.classList.add('hidden');
-              document.getElementById('bill-id').value = "";
-              document.getElementById('bill-due-date').value = todayString;
-          }
-          modals.bill.classList.remove('hidden');
-      }
-
-      // ===========================================
-      // === EXPENSE TRACKER APP ===================
-      // ===========================================
-
-      // --- Elements ---
-      const expenseListContainer = document.getElementById('expenseListContainer');
-      const expensePlaceholder = document.getElementById('expensePlaceholder');
-      const openAddExpenseModalBtn = document.getElementById('openAddExpenseModal');
-      const expenseForm = document.getElementById('expenseForm');
-      const expenseModalTitle = document.getElementById('expenseModalTitle');
-
-      function initExpenseListeners() {
-          if (openAddExpenseModalBtn) {
-              openAddExpenseModalBtn.addEventListener('click', openExpenseModal);
-          }
-
-          // ENHANCED: Expense form with API
-          expenseForm.addEventListener('submit', async (e) => {
-              e.preventDefault();
-              const formData = new FormData(expenseForm);
-              const expense = Object.fromEntries(formData.entries());
-              expense.amount = parseFloat(expense.amount);
-
-              try {
-                  setLoading(true);
-                  await ApiService.createExpense(expense);
-                  showMessage('Expense added!', 'success');
-                  await loadAllData();
-                  modals.expense.classList.add('hidden');
-              } catch (error) {
-                  showMessage('Failed to add expense', 'error');
-              } finally {
-                  setLoading(false);
-              }
-          });
-      }
-
-      function renderExpenses() {
-          expenseListContainer.innerHTML = '';
-          if (allExpenses.length === 0) {
-              expenseListContainer.appendChild(expensePlaceholder);
-              expensePlaceholder.classList.remove('hidden');
-          } else {
-              expensePlaceholder.classList.add('hidden');
-              allExpenses.sort((a,b) => new Date(b.date) - new Date(a.date));
-              allExpenses.forEach(exp => expenseListContainer.appendChild(createExpenseCard(exp)));
-          }
-          lucide.createIcons();
-      }
-
-      function createExpenseCard(expense) {
-          const card = document.createElement('div');
-          card.className = `bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex items-center justify-between`;
-          card.innerHTML = `
-              <div class="flex items-center space-x-4">
-                  <span class="text-xs font-semibold px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full">${expense.category}</span>
-                  <div>
-                      <h4 class="text-lg font-semibold">${expense.name}</h4>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">${expense.date}</p>
-                  </div>
-              </div>
-              <div class="text-right">
-                  <p class="text-xl font-bold">₹${expense.amount.toFixed(2)}</p>
-                  <button data-id="${expense.id}" class="delete-expense-btn text-xs text-red-500 hover:underline">Delete</button>
-              </div>
-          `;
-
-          const deleteBtn = card.querySelector('.delete-expense-btn');
-          if (deleteBtn) {
-              deleteBtn.addEventListener('click', async () => {
-                  const expenseId = parseInt(deleteBtn.dataset.id);
-                  try {
-                      setLoading(true);
-                      await handleDeleteExpenseWithAPI(expenseId);
-                  } catch (error) {
-                      // Error handled
-                  } finally {
-                      setLoading(false);
-                  }
-              });
-          }
-          return card;
-      }
-
-      function openExpenseModal() {
-          expenseForm.reset();
-          expenseModalTitle.textContent = "Add New Expense";
-          document.getElementById('expense-id').value = "";
-          document.getElementById('expense-date').value = todayString;
-          modals.expense.classList.remove('hidden');
-      }
-
-      // --- APP INITIALIZATION ---
-      applyDarkMode();
-      initGlobalListeners();
-      initHomeDashboardListeners();
-      initSubscriptionListeners();
-      initPantryListeners();
-      initBillListeners();
-      initExpenseListeners();
-      initNewFeatures();
-      initializeAppWithAPI();
-  });
+    // ========== API CONFIGURATION ==========
+    // Make sure this matches your Java backend base path.
+    // Example: if your Spring controllers are under "/api/**"
+    const API_BASE_URL = "https://homeapp-v540.onrender.com/api";
+
+
+    // ========== API SERVICE (FIXED) ==========
+    class ApiService {
+        static async request(endpoint, options = {}) {
+            const token = localStorage.getItem('authToken');
+
+            const {
+                body,
+                headers = {},
+                method = 'GET',
+                ...restOptions
+            } = options;
+
+            const fetchOptions = {
+                method,
+                headers: {
+                    // Only send JSON header if there is a body
+                    ...(body !== undefined && { 'Content-Type': 'application/json' }),
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                    ...headers,
+                },
+                ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+                ...restOptions,
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => '');
+                    throw new Error(`API Error ${response.status}: ${errorText}`);
+                }
+
+                // If no body or not JSON, just return null
+                const contentType = response.headers.get('content-type') || '';
+                if (
+                    response.status === 204 ||
+                    response.status === 205 ||
+                    !contentType.toLowerCase().includes('application/json')
+                ) {
+                    return null;
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API Request failed:', error);
+                throw error;
+            }
+        }
+
+        // ---------- Auth ----------
+        static async login(email, password) {
+            return this.request('/auth/login', {
+                method: 'POST',
+                body: { email, password }
+            });
+        }
+
+        static async signup(name, email, password) {
+            return this.request('/auth/signup', {
+                method: 'POST',
+                body: { name, email, password }
+            });
+        }
+
+        // ---------- User ----------
+        static async getUser() {
+            return this.request('/user');
+        }
+
+        static async updateIncome(income) {
+            return this.request('/user', {
+                method: 'PUT',
+                body: { income: parseFloat(income) }
+            });
+        }
+
+        // ---------- Subscriptions ----------
+        static async getSubscriptions() {
+            return this.request('/subscriptions');
+        }
+
+        static async createSubscription(subscription) {
+            return this.request('/subscriptions', {
+                method: 'POST',
+                body: subscription
+            });
+        }
+
+        static async updateSubscription(subscription) {
+            return this.request('/subscriptions', {
+                method: 'PUT',
+                body: subscription
+            });
+        }
+
+        static async deleteSubscription(id) {
+            console.log('🔴 API: Deleting subscription ID:', id);
+            // Most REST APIs do not expect a body for DELETE
+            return this.request(`/subscriptions/${id}`, {
+                method: 'DELETE'
+            });
+        }
+
+        // ---------- Bills ----------
+        static async getBills() {
+            return this.request('/bills');
+        }
+
+        static async createBill(bill) {
+            return this.request('/bills', {
+                method: 'POST',
+                body: bill
+            });
+        }
+
+        static async updateBill(bill) {
+            return this.request('/bills', {
+                method: 'PUT',
+                body: bill
+            });
+        }
+
+        static async markBillPaid(id) {
+            // Keep this as-is unless your backend uses a different endpoint
+            return this.request('/bills', {
+                method: 'PUT',
+                body: { id: parseInt(id) }
+            });
+        }
+
+        static async deleteBill(id) {
+            console.log('🔴 API: Deleting bill ID:', id);
+            return this.request(`/bills/${id}`, {
+                method: 'DELETE'
+            });
+        }
+
+        // ---------- Expenses ----------
+        static async getExpenses() {
+            return this.request('/expenses');
+        }
+
+        static async createExpense(expense) {
+            return this.request('/expenses', {
+                method: 'POST',
+                body: expense
+            });
+        }
+
+        static async deleteExpense(id) {
+            console.log('🔴 API: Deleting expense ID:', id);
+            return this.request(`/expenses/${id}`, {
+                method: 'DELETE'
+            });
+        }
+
+        // ---------- Pantry ----------
+        static async getPantryItems() {
+            return this.request('/pantry');
+        }
+
+        static async createPantryItem(item) {
+            return this.request('/pantry', {
+                method: 'POST',
+                body: item
+            });
+        }
+
+        static async deletePantryItem(id) {
+            console.log('🔴 API: Deleting pantry item ID:', id);
+            return this.request(`/pantry/${id}`, {
+                method: 'DELETE'
+            });
+        }
+    }
+
+    // ========== UTILITY FUNCTIONS ==========
+    function showMessage(message, type = 'success') {
+        const messageEl = document.createElement('div');
+        messageEl.className = `api-message api-${type} fade-in`;
+        messageEl.textContent = message;
+        document.body.appendChild(messageEl);
+
+        setTimeout(() => {
+            messageEl.remove();
+        }, 3000);
+    }
+
+    function setLoading(loading = true) {
+        const app = document.getElementById('app');
+        if (loading) {
+            app.classList.add('api-loading');
+        } else {
+            app.classList.remove('api-loading');
+        }
+    }
+
+    // ========== ENHANCED AUTH HANDLERS ==========
+    async function handleLoginWithAPI(email, password) {
+        try {
+            setLoading(true);
+            const result = await ApiService.login(email, password);
+
+            // Store token and user info
+            localStorage.setItem('authToken', result.token);
+            localStorage.setItem('userId', result.userId); // Store userId
+            localStorage.setItem('userName', result.name);
+            localStorage.setItem('userEmail', result.email);
+
+            showMessage('Login successful!', 'success');
+            return result;
+        } catch (error) {
+            showMessage('Login failed. Please check your credentials.', 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleSignupWithAPI(name, email, password) {
+        try {
+            setLoading(true);
+            const result = await ApiService.signup(name, email, password);
+
+            // Store token and user info
+            localStorage.setItem('authToken', result.token);
+            localStorage.setItem('userId', result.userId); // Store userId
+            localStorage.setItem('userName', result.name);
+            localStorage.setItem('userEmail', result.email);
+
+            showMessage('Account created successfully!', 'success');
+            return result;
+        } catch (error) {
+            showMessage('Signup failed. Please try again.', 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ========== ENHANCED DATA LOADING ==========
+    async function loadAllData() {
+        try {
+            setLoading(true);
+
+            // Load user data
+            const userData = await ApiService.getUser();
+            document.getElementById('userName').textContent = userData.name;
+            if (userData.income) {
+                totalIncome = userData.income;
+                renderHomeDashboard();
+            }
+
+            // Load all other data
+            const [subscriptions, bills, expenses, pantryItems] = await Promise.all([
+                ApiService.getSubscriptions(),
+                ApiService.getBills(),
+                ApiService.getExpenses(),
+                ApiService.getPantryItems()
+            ]);
+
+            // Update your existing data arrays
+            allSubscriptions = subscriptions;
+            allBills = bills;
+            allExpenses = expenses;
+            allItems = pantryItems;
+
+            // Refresh UI
+            renderHomeDashboard();
+            renderSubscriptionList();
+            renderBills();
+            renderExpenses();
+            renderPantryItems();
+
+        } catch (error) {
+            showMessage('Failed to load data', 'error');
+            console.error('Data loading error:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ========== ENHANCED FORM HANDLERS ==========
+    async function handleSaveSubscriptionWithAPI(subscriptionData) {
+        try {
+            setLoading(true);
+            let result;
+
+            if (subscriptionData.id) {
+                // Update existing
+                result = await ApiService.updateSubscription(subscriptionData);
+                showMessage('Subscription updated!', 'success');
+            } else {
+                // Create new
+                result = await ApiService.createSubscription(subscriptionData);
+                showMessage('Subscription added!', 'success');
+            }
+
+            // Refresh data
+            await loadAllData();
+            return result;
+        } catch (error) {
+            showMessage('Failed to save subscription', 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // CORRECTED DELETE HANDLERS WITH DEBUG LOGGING
+    async function handleDeleteSubscriptionWithAPI(id) {
+        try {
+            console.log('🔴 DELETE: Starting delete for subscription ID:', id);
+            setLoading(true);
+            await ApiService.deleteSubscription(id);
+            console.log('✅ DELETE: Subscription deleted successfully');
+            showMessage('Subscription deleted!', 'success');
+            await loadAllData();
+        } catch (error) {
+            console.error('❌ DELETE: Failed to delete subscription:', error);
+            showMessage('Failed to delete subscription', 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // NEW: Bill deletion handler
+    async function handleDeleteBillWithAPI(id) {
+        try {
+            console.log('🔴 DELETE: Starting delete for bill ID:', id);
+            setLoading(true);
+            await ApiService.deleteBill(id);
+            console.log('✅ DELETE: Bill deleted successfully');
+            showMessage('Bill deleted!', 'success');
+            await loadAllData();
+        } catch (error) {
+            console.error('❌ DELETE: Failed to delete bill:', error);
+            showMessage('Failed to delete bill', 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleDeleteExpenseWithAPI(id) {
+        try {
+            console.log('🔴 DELETE: Starting delete for expense ID:', id);
+            setLoading(true);
+            await ApiService.deleteExpense(id);
+            console.log('✅ DELETE: Expense deleted successfully');
+            showMessage('Expense deleted!', 'success');
+            await loadAllData();
+        } catch (error) {
+            console.error('❌ DELETE: Failed to delete expense:', error);
+            showMessage('Failed to delete expense', 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleDeletePantryItemWithAPI(id) {
+        try {
+            console.log('🔴 DELETE: Starting delete for pantry item ID:', id);
+            setLoading(true);
+            await ApiService.deletePantryItem(id);
+            console.log('✅ DELETE: Pantry item deleted successfully');
+            showMessage('Item deleted!', 'success');
+            await loadAllData();
+        } catch (error) {
+            console.error('❌ DELETE: Failed to delete pantry item:', error);
+            showMessage('Failed to delete item', 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ========== INITIALIZATION ==========
+    function initializeAppWithAPI() {
+        // Check if user is logged in
+        const token = localStorage.getItem('authToken');
+        const userName = localStorage.getItem('userName');
+
+        if (token && userName) {
+            // User is logged in
+            document.getElementById('userName').textContent = userName;
+            showPage('main');
+            showAppPage('home');
+
+            // Load data from API
+            loadAllData();
+        } else {
+            // User not logged in
+            showPage('landing');
+        }
+    }
+
+    // --- GLOBAL ELEMENTS (Pages) ---
+    const pages = {
+        landing: document.getElementById('landingPage'),
+        login: document.getElementById('loginPage'),
+        signup: document.getElementById('signupPage'),
+        main: document.getElementById('mainApp'),
+    };
+    const appPages = {
+        home: document.getElementById('homePage'),
+        subscription: document.getElementById('subscriptionPage'),
+        pantry: document.getElementById('pantryPage'),
+        bills: document.getElementById('billPage'),
+        expenses: document.getElementById('expensePage'),
+    };
+    // --- GLOBAL ELEMENTS (Modals) ---
+    const modals = {
+        subscription: document.getElementById('addSubscriptionModal'),
+        smartAdd: document.getElementById('smartAddModal'),
+        pantry: document.getElementById('addItemModal'),
+        bill: document.getElementById('addBillModal'),
+        expense: document.getElementById('addExpenseModal'),
+        income: document.getElementById('editIncomeModal'),
+    };
+
+    // --- GLOBAL ELEMENTS (Navigation) ---
+    const goToSignupButton = document.getElementById('goToSignup');
+    const goToLoginButton = document.getElementById('goToLogin');
+
+    // Landing Page Buttons
+    const goToLoginFromLanding = document.getElementById('goToLoginFromLanding');
+    const goToSignupFromLanding = document.getElementById('goToSignupFromLanding');
+    const goToLoginFromLandingMobile = document.getElementById('goToLoginFromLandingMobile');
+    const goToSignupFromLandingMobile = document.getElementById('goToSignupFromLandingMobile');
+    const goToSignupFromLandingHero = document.getElementById('goToSignupFromLandingHero');
+    const modalCloseButtons = document.querySelectorAll('.modal-close-btn');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pageTitle = document.getElementById('pageTitle');
+    // --- GLOBAL ELEMENTS (Sidebar) ---
+    const sidebar = document.getElementById('sidebar');
+    const openSidebarButton = document.getElementById('openSidebar');
+    const closeSidebarButton = document.getElementById('closeSidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    // --- GLOBAL ELEMENTS (Auth) ---
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const logoutButton = document.getElementById('logoutButton');
+    const userNameEl = document.getElementById('userName');
+    // --- GLOBAL ELEMENTS (Dark Mode) ---
+    const mainDarkModeToggle = document.getElementById('darkModeToggle');
+    const htmlEl = document.documentElement;
+
+    // --- NEW ELEMENTS ---
+    const loader = document.getElementById('loader');
+    const scrollToTopBtn = document.getElementById('scrollToTop');
+    const faqQuestions = document.querySelectorAll('.faq-question');
+    const contactForm = document.getElementById('contactForm');
+
+    // --- GLOBAL APP STATE (Data from API) ---
+    let totalIncome = 50000;
+    let allSubscriptions = [];
+    const predefinedSubscriptions = [
+        { name: 'Netflix', price: 149, category: 'Streaming', icon: 'tv' },
+        { name: 'Spotify', price: 119, category: 'Music', icon: 'music' },
+        { name: 'Amazon Prime', price: 299, category: 'Streaming', icon: 'shopping-cart' },
+        { name: 'Disney+ Hotstar', price: 299, category: 'Streaming', icon: 'film' },
+        { name: 'YouTube Premium', price: 129, category: 'Music', icon: 'youtube' },
+        { name: 'AWS', price: 500, category: 'Cloud', icon: 'cloud' },
+        { name: 'Adobe CC', price: 1500, category: 'Software', icon: 'pen-tool' },
+        { name: 'Microsoft 365', price: 489, category: 'Productivity', icon: 'layout-grid' },
+    ];
+
+    let allItems = [];
+    let allBills = [];
+    let allExpenses = [];
+
+    // --- Chart variables ---
+    let categoryChart = null;
+    let spendingTrendChart = null;
+
+    // --- Today's Date ---
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0];
+
+    // --- NEW FEATURE INITIALIZATION ---
+    function initNewFeatures() {
+        // Loader
+        setTimeout(() => {
+            loader.classList.add('hidden');
+        }, 1500);
+
+        // Scroll to top button
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.classList.add('visible');
+            } else {
+                scrollToTopBtn.classList.remove('visible');
+            }
+        });
+
+        scrollToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // FAQ accordion
+        faqQuestions.forEach(question => {
+            question.addEventListener('click', () => {
+                const answer = question.nextElementSibling;
+                const icon = question.querySelector('i');
+
+                // Toggle the open class
+                answer.classList.toggle('open');
+
+                // Rotate the icon
+                if (answer.classList.contains('open')) {
+                    icon.style.transform = 'rotate(180deg)';
+                } else {
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+
+        // Contact form
+        if (contactForm) {
+            contactForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                alert('Thank you for your message! We will get back to you soon.');
+                contactForm.reset();
+            });
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    }
+
+    // --- PAGE NAVIGATION ---
+    function showPage(pageId) {
+        // Hide all main pages
+        Object.values(pages).forEach(page => page.classList.add('hidden'));
+
+        // Show the requested main page
+        const pageToShow = pages[pageId];
+        if (pageToShow) {
+            pageToShow.classList.remove('hidden');
+            if(pageId === 'login' || pageId === 'signup') {
+                pageToShow.classList.add('flex');
+            }
+            if(pageId === 'landing') {
+                pageToShow.classList.add('flex'); // it's a flex-col
+            }
+            if(pageId === 'main') {
+                pageToShow.classList.add('block'); // Main app shell
+            }
+        }
+        lucide.createIcons();
+    }
+
+    function showAppPage(pageId) {
+        // Hide all app pages
+        Object.values(appPages).forEach(page => page.classList.add('hidden'));
+
+        // Show the requested app page
+        const pageToShow = appPages[pageId];
+        if (pageToShow) {
+            pageToShow.classList.remove('hidden');
+        }
+
+        // Update nav links
+        navLinks.forEach(link => {
+            link.classList.toggle('nav-active', link.dataset.page === pageId);
+        });
+
+        // Update mobile page title
+        const activeLink = document.querySelector(`.nav-link[data-page="${pageId}"]`);
+        if (activeLink) {
+            pageTitle.textContent = activeLink.textContent.trim();
+        }
+
+        // Call the specific render function for the page
+        if (pageId === 'home') renderHomeDashboard();
+        if (pageId === 'subscription') loadDashboardData();
+        if (pageId === 'pantry') renderPantryItems();
+        if (pageId === 'bills') renderBills();
+        if (pageId === 'expenses') renderExpenses();
+        lucide.createIcons();
+    }
+
+    // --- DARK MODE ---
+    function applyDarkMode() {
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlEl.classList.add('dark');
+        } else {
+            htmlEl.classList.remove('dark');
+        }
+    }
+
+    // --- SIDEBAR ---
+    function toggleSidebar(show) {
+        if (show) {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarOverlay.classList.remove('hidden');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        }
+    }
+
+    // --- GLOBAL LISTENERS ---
+    function initGlobalListeners() {
+        mainDarkModeToggle.addEventListener('click', () => {
+            if (htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                htmlEl.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+            // Re-render all possible pages
+            renderHomeDashboard();
+            loadDashboardData();
+            renderBills();
+            renderExpenses();
+        });
+        // --- AUTH ---
+        // ENHANCED: Login form with API
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = loginForm.querySelector('#login-email').value;
+            const password = loginForm.querySelector('#login-password').value;
+
+            try {
+                const result = await handleLoginWithAPI(email, password);
+                userNameEl.textContent = result.name;
+                showPage('main');
+                showAppPage('home');
+                await loadAllData();
+            } catch (error) {
+                // Login failed - error is already shown in handleLoginWithAPI
+            }
+        });
+
+        // ENHANCED: Signup form with API
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = signupForm.querySelector('#signup-name').value;
+            const email = signupForm.querySelector('#signup-email').value;
+            const password = signupForm.querySelector('#signup-password').value;
+
+            try {
+                const result = await handleSignupWithAPI(name, email, password);
+                userNameEl.textContent = result.name;
+                showPage('main');
+                showAppPage('home');
+                await loadAllData();
+            } catch (error) {
+                // Signup failed - error is already shown in handleSignupWithAPI
+            }
+        });
+
+        logoutButton.addEventListener('click', () => {
+            // Clear local storage on logout
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('userEmail');
+
+            loginForm.reset();
+            signupForm.reset();
+            userNameEl.textContent = 'User'; // Reset username
+            showPage('landing'); // Go to landing
+        });
+
+        // --- GLOBAL NAVIGATION ---
+        goToSignupButton.addEventListener('click', () => showPage('signup'));
+        goToLoginButton.addEventListener('click', () => showPage('login'));
+
+        // Landing Page Listeners
+        goToLoginFromLanding.addEventListener('click', () => showPage('login'));
+        goToSignupFromLanding.addEventListener('click', () => showPage('signup'));
+        goToLoginFromLandingMobile.addEventListener('click', () => showPage('login'));
+        goToSignupFromLandingMobile.addEventListener('click', () => showPage('signup'));
+        goToSignupFromLandingHero.addEventListener('click', () => showPage('signup'));
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.dataset.page;
+                showAppPage(pageId);
+                toggleSidebar(false); // Close sidebar on mobile nav
+            });
+        });
+
+        // --- SIDEBAR ---
+        openSidebarButton.addEventListener('click', () => toggleSidebar(true));
+        closeSidebarButton.addEventListener('click', () => toggleSidebar(false));
+        sidebarOverlay.addEventListener('click', () => toggleSidebar(false));
+
+        // --- MODAL CLOSE ---
+        modalCloseButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.fixed').classList.add('hidden');
+            });
+        });
+    }
+
+    // ===========================================
+    // === HOME DASHBOARD APP ====================
+    // ===========================================
+
+    // --- Elements ---
+    const homeIncomeEl = document.getElementById('homeIncome');
+    const homeExpensesEl = document.getElementById('homeExpenses');
+    const homeBalanceEl = document.getElementById('homeBalance');
+    const openIncomeModalBtn = document.getElementById('openIncomeModal');
+    const incomeForm = document.getElementById('incomeForm');
+    const monthlyIncomeInput = document.getElementById('monthly-income');
+    const upcomingBillsContainer = document.getElementById('upcomingBillsContainer');
+    const expiringItemsContainer = document.getElementById('expiringItemsContainer');
+    const recentExpensesContainer = document.getElementById('recentExpensesContainer');
+
+    function initHomeDashboardListeners() {
+        openIncomeModalBtn.addEventListener('click', () => {
+            monthlyIncomeInput.value = totalIncome;
+            modals.income.classList.remove('hidden');
+        });
+
+        // ENHANCED: Income form with API
+        incomeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const income = parseFloat(monthlyIncomeInput.value) || 0;
+
+            try {
+                await ApiService.updateIncome(income);
+                totalIncome = income;
+                renderHomeDashboard();
+                modals.income.classList.add('hidden');
+                showMessage('Income updated!', 'success');
+            } catch (error) {
+                showMessage('Failed to update income', 'error');
+            }
+        });
+    }
+
+    function renderHomeDashboard() {
+        // 1. Calculate Expenses
+        let totalMonthlyExpense = 0;
+
+        // Subs
+        allSubscriptions.forEach(sub => {
+            if (sub.cycle === 'monthly') totalMonthlyExpense += sub.price;
+            else if (sub.cycle === 'yearly') totalMonthlyExpense += sub.price / 12;
+            else if (sub.cycle === 'quarterly') totalMonthlyExpense += sub.price / 3;
+        });
+
+        // Bills (assuming they are monthly)
+        allBills.forEach(bill => {
+            totalMonthlyExpense += bill.amount;
+        });
+
+        // Expenses (for current month)
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        allExpenses.forEach(exp => {
+            const expenseDate = new Date(exp.date);
+            if (expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear) {
+                totalMonthlyExpense += exp.amount;
+            }
+        });
+
+        // NEW: Add pantry items as expenses (only if they were purchased this month)
+        const currentMonthPantryItems = allItems.filter(item => {
+            const itemDate = new Date(item.expiry);
+            return itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear;
+        });
+
+        const pantryExpenseEstimate = currentMonthPantryItems.length * 100; // ₹100 per item estimate
+        totalMonthlyExpense += pantryExpenseEstimate;
+
+        // 2. Calculate Balance
+        const balance = totalIncome - totalMonthlyExpense;
+
+        // 3. Update UI
+        homeIncomeEl.textContent = `₹${totalIncome.toFixed(2)}`;
+        homeExpensesEl.textContent = `₹${totalMonthlyExpense.toFixed(2)}`;
+        homeBalanceEl.textContent = `₹${balance.toFixed(2)}`;
+
+        if (balance < 0) {
+            homeBalanceEl.classList.remove('text-gray-700', 'dark:text-gray-200');
+            homeBalanceEl.classList.add('text-red-600', 'dark:text-red-400');
+        } else {
+            homeBalanceEl.classList.add('text-gray-700', 'dark:text-gray-200');
+            homeBalanceEl.classList.remove('text-red-600', 'dark:text-red-400');
+        }
+
+        // 4. Render dynamic sections
+        renderUpcomingBills();
+        renderExpiringItems();
+        renderRecentExpenses();
+    }
+
+    function renderUpcomingBills() {
+        upcomingBillsContainer.innerHTML = '';
+
+        // Get upcoming bills (unpaid and due within the next 30 days)
+        const today = new Date();
+        const next30Days = new Date();
+        next30Days.setDate(today.getDate() + 30);
+
+        const upcomingBills = allBills.filter(bill => {
+            const dueDate = new Date(bill.dueDate);
+            return bill.status === 'Unpaid' && dueDate >= today && dueDate <= next30Days;
+        });
+
+        if (upcomingBills.length === 0) {
+            upcomingBillsContainer.innerHTML = `
+                <div id="billsPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                    <p class="text-gray-500 dark:text-gray-400">No upcoming bills.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Sort by due date
+        upcomingBills.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+        // Render bills
+        upcomingBills.forEach(bill => {
+            const billCard = document.createElement('div');
+            billCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
+            billCard.innerHTML = `
+                <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="${bill.name} Bill" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                <div class="relative z-10">
+                    <h3 class="text-lg font-semibold">${bill.name}</h3>
+                    <p class="text-xl font-bold text-red-600 dark:text-red-400">₹${bill.amount.toFixed(2)}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Due: ${new Date(bill.dueDate).toLocaleDateString()}</p>
+                </div>
+            `;
+            upcomingBillsContainer.appendChild(billCard);
+        });
+    }
+
+    function renderExpiringItems() {
+        expiringItemsContainer.innerHTML = '';
+
+        // Get items expiring within the next 7 days
+        const today = new Date();
+        const next7Days = new Date();
+        next7Days.setDate(today.getDate() + 7);
+
+        const expiringItems = allItems.filter(item => {
+            const expiryDate = new Date(item.expiry);
+            return expiryDate >= today && expiryDate <= next7Days;
+        });
+
+        if (expiringItems.length === 0) {
+            expiringItemsContainer.innerHTML = `
+                <div id="expiringPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                    <p class="text-gray-500 dark:text-gray-400">No items expiring soon.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Sort by expiry date
+        expiringItems.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+
+        // Render items
+        expiringItems.forEach(item => {
+            const expiryDate = new Date(item.expiry);
+            const daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+
+            const itemCard = document.createElement('div');
+            itemCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
+            itemCard.innerHTML = `
+                <img src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bWlsa3xlbnwwfHwwfHx8MA%3D%3D" alt="${item.name}" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                <div class="relative z-10">
+                    <h3 class="text-lg font-semibold">${item.name}</h3>
+                    <p class="text-sm ${daysLeft <= 1 ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'}">Expires in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${item.quantity}</p>
+                </div>
+            `;
+            expiringItemsContainer.appendChild(itemCard);
+        });
+    }
+
+    function renderRecentExpenses() {
+        recentExpensesContainer.innerHTML = '';
+
+        // Get recent expenses (last 5)
+        const recentExpenses = [...allExpenses]
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 5);
+
+        if (recentExpenses.length === 0) {
+            recentExpensesContainer.innerHTML = `
+                <div id="expensesPlaceholder" class="col-span-full text-center p-10 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+                    <p class="text-gray-500 dark:text-gray-400">No recent expenses.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Render expenses
+        recentExpenses.forEach(expense => {
+            const expenseCard = document.createElement('div');
+            expenseCard.className = 'bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md relative overflow-hidden';
+
+            // Select appropriate image based on category
+            let imageUrl = 'https://plus.unsplash.com/premium_photo-1741657668295-86ed0b179d08?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8d2Vla2x5JTIwZ3JvY2VyaWVzfGVufDB8fDB8fHww';
+            if (expense.category === 'Transport') {
+                imageUrl = 'https://images.unsplash.com/photo-1709536240401-ae8f6ca55e18?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGV0cm9sfGVufDB8fDB8fHww';
+            } else if (expense.category === 'School Fees') {
+                imageUrl = 'https://media.istockphoto.com/id/1235608919/photo/children-girls-and-boys-sitting-and-reading-books-group-study-stock-photo.webp?a=1&b=1&s=612x612&w=0&k=20&c=a2eQkiYw-SZ_yoNSdaQRiiwU0TnaqtUl3TPZYyjK9qY=';
+            }
+
+            expenseCard.innerHTML = `
+                <img src="${imageUrl}" alt="${expense.name}" class="dashboard-image absolute top-0 left-0 w-full h-full object-cover opacity-10">
+                <div class="relative z-10">
+                    <h3 class="text-lg font-semibold">${expense.name}</h3>
+                    <p class="text-xl font-bold text-yellow-600 dark:text-yellow-400">₹${expense.amount.toFixed(2)}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${new Date(expense.date).toLocaleDateString()}</p>
+                    <span class="inline-block mt-2 text-xs font-semibold px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full">${expense.category}</span>
+                </div>
+            `;
+            recentExpensesContainer.appendChild(expenseCard);
+        });
+    }
+
+    // ===========================================
+    // === SUBSCRIPTION TRACKER APP ==============
+    // ===========================================
+
+    // --- Elements ---
+    const totalMonthlyEl = document.getElementById('totalMonthly');
+    const nextRenewalEl = document.getElementById('nextRenewal');
+    const activeSubsEl = document.getElementById('activeSubs');
+    const totalYearlyEl = document.getElementById('totalYearly');
+    const savingsSuggestionEl = document.getElementById('savingsSuggestion');
+    const subscriptionListEl = document.getElementById('subscriptionList');
+    const subsPlaceholderEl = document.getElementById('subsPlaceholder');
+    const subsNoResultsEl = document.getElementById('subsNoResults');
+    const notificationToggle = document.getElementById('notificationToggle');
+    const notificationPanel = document.getElementById('notificationPanel');
+    const notificationList = document.getElementById('notificationList');
+    const notificationAlert = document.getElementById('notificationAlert');
+    const openSubModalButton = document.getElementById('openAddModal');
+    const subscriptionForm = document.getElementById('subscriptionForm');
+    const subModalTitle = document.getElementById('subModalTitle');
+    const deleteSubButton = document.getElementById('deleteSubButton');
+    const chartCanvas = document.getElementById('categoryChart').getContext('2d');
+    const trendChartCanvas = document.getElementById('spendingTrendChart').getContext('2d');
+    const openSmartAddModalButton = document.getElementById('openSmartAddModal');
+    const smartAddGrid = document.getElementById('smartAddGrid');
+
+    // FAB Elements
+    const fabToggle = document.getElementById('fabToggle');
+    const fabMenu = document.getElementById('fabMenu');
+    const fabIcon = fabToggle.querySelector('i');
+
+    // Search/Filter Elements
+    const subSearchInput = document.getElementById('subSearchInput');
+    const subCategoryFilter = document.getElementById('subCategoryFilter');
+
+    // Form Validation Elements
+    const subNameInput = document.getElementById('sub-name');
+    const subPriceInput = document.getElementById('sub-price');
+    const subNameError = document.getElementById('sub-name-error');
+    const subPriceError = document.getElementById('sub-price-error');
+
+    function initSubscriptionListeners() {
+        openSubModalButton.addEventListener('click', () => {
+            openSubscriptionModal();
+            toggleFab(false);
+        });
+        openSmartAddModalButton.addEventListener('click', () => {
+            openSmartAddModal();
+            toggleFab(false);
+        });
+
+        // ENHANCED: Subscription form with API
+        subscriptionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            // Run validation
+            if (!validateSubForm()) {
+                return;
+            }
+
+            const formData = new FormData(subscriptionForm);
+            const sub = Object.fromEntries(formData.entries());
+            sub.price = parseFloat(sub.price);
+
+            try {
+                await handleSaveSubscriptionWithAPI(sub);
+                modals.subscription.classList.add('hidden');
+            } catch (error) {
+                // Error is already shown in handleSaveSubscriptionWithAPI
+            }
+        });
+
+        // ENHANCED: Delete subscription with API
+        deleteSubButton.addEventListener('click', async () => {
+            const subId = document.getElementById('sub-id').value;
+            if (!subId) return;
+
+            try {
+                await handleDeleteSubscriptionWithAPI(subId);
+                modals.subscription.classList.add('hidden');
+            } catch (error) {
+                // Error is already shown in handleDeleteSubscriptionWithAPI
+            }
+        });
+
+        notificationToggle.addEventListener('click', (e) => { e.stopPropagation(); notificationPanel.classList.toggle('hidden'); });
+
+        document.addEventListener('click', (e) => {
+            if (notificationPanel && !notificationPanel.classList.contains('hidden')) {
+                if (!notificationPanel.contains(e.target) && e.target !== notificationToggle && !notificationToggle.contains(e.target)) {
+                    notificationPanel.classList.add('hidden');
+                }
+            }
+
+            // Close FAB menu if clicking outside
+            if (fabMenu && !fabMenu.classList.contains('scale-0')) {
+                if (!fabMenu.contains(e.target) && !fabToggle.contains(e.target)) {
+                    toggleFab(false);
+                }
+            }
+        });
+
+        // FAB Listener
+        fabToggle.addEventListener('click', () => {
+            toggleFab(fabMenu.classList.contains('scale-0'));
+        });
+
+        // Search/Filter Listeners
+        subSearchInput.addEventListener('input', renderSubscriptionList);
+        subCategoryFilter.addEventListener('change', renderSubscriptionList);
+
+        // Form Validation Listeners
+        subNameInput.addEventListener('input', () => validateSubForm());
+        subPriceInput.addEventListener('input', () => validateSubForm());
+    }
+
+    function toggleFab(show) {
+        if (show) {
+            fabMenu.classList.remove('scale-0');
+            fabIcon.classList.add('rotate-45');
+        } else {
+            fabMenu.classList.add('scale-0');
+            fabIcon.classList.remove('rotate-45');
+        }
+    }
+
+    // Form Validation
+    function validateSubForm() {
+        let isValid = true;
+
+        // Validate Name
+        if (subNameInput.value.trim() === '') {
+            subNameError.classList.remove('hidden');
+            subNameInput.classList.add('border-red-500');
+            isValid = false;
+        } else {
+            subNameError.classList.add('hidden');
+            subNameInput.classList.remove('border-red-500');
+        }
+
+        // Validate Price
+        if (subPriceInput.value === '' || parseFloat(subPriceInput.value) < 0) {
+            subPriceError.classList.remove('hidden');
+            subPriceInput.classList.add('border-red-500');
+            isValid = false;
+        } else {
+            subPriceError.classList.add('hidden');
+            subPriceInput.classList.remove('border-red-500');
+        }
+
+        return isValid;
+    }
+
+    function resetSubFormValidation() {
+        subNameError.classList.add('hidden');
+        subNameInput.classList.remove('border-red-500');
+        subPriceError.classList.add('hidden');
+        subPriceInput.classList.remove('border-red-500');
+    }
+
+    function loadDashboardData() {
+        const summary = calculateSummary(allSubscriptions);
+        updateDashboardUI(summary);
+        renderSubscriptionList();
+    }
+
+    // Separate function to render the list based on filters
+    function renderSubscriptionList() {
+        const searchTerm = subSearchInput.value.toLowerCase();
+        const category = subCategoryFilter.value;
+
+        const filteredSubs = allSubscriptions.filter(sub => {
+            const nameMatch = sub.name.toLowerCase().includes(searchTerm);
+            const categoryMatch = (category === 'all' || sub.category === category);
+            return nameMatch && categoryMatch;
+        });
+
+        subscriptionListEl.innerHTML = '';
+
+        if (allSubscriptions.length === 0) {
+            subscriptionListEl.appendChild(subsPlaceholderEl);
+            subsPlaceholderEl.classList.remove('hidden');
+            subsNoResultsEl.classList.add('hidden');
+        } else if (filteredSubs.length === 0) {
+            subscriptionListEl.appendChild(subsNoResultsEl);
+            subsNoResultsEl.classList.remove('hidden');
+            subsPlaceholderEl.classList.add('hidden');
+        } else {
+            subsPlaceholderEl.classList.add('hidden');
+            subsNoResultsEl.classList.add('hidden');
+            filteredSubs.sort((a,b) => new Date(a.nextDue) - new Date(b.nextDue));
+            filteredSubs.forEach(sub => subscriptionListEl.appendChild(createSubscriptionCard(sub)));
+        }
+        lucide.createIcons();
+    }
+
+    function createOrUpdateChart(categories, data) {
+        const isDark = htmlEl.classList.contains('dark');
+        const labelColor = isDark ? '#cbd5e1' : '#475569';
+        if (categoryChart) categoryChart.destroy();
+        if (data.length === 0 || data.every(item => item === 0)) {
+            categories = ['No Data']; data = [1];
+        }
+        categoryChart = new Chart(chartCanvas, {
+            type: 'pie',
+            data: {
+                labels: categories,
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#2563eb', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'],
+                    borderColor: isDark ? '#1e293b' : '#ffffff', borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: labelColor, font: { family: "'Inter', sans-serif" }}}}
+            }
+        });
+    }
+
+    function createOrUpdateLineChart(labels, data) {
+        const isDark = htmlEl.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const labelColor = isDark ? '#cbd5e1' : '#475569';
+        if (spendingTrendChart) spendingTrendChart.destroy();
+        spendingTrendChart = new Chart(trendChartCanvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Monthly Spending', data: data, fill: false, borderColor: '#2563eb',
+                    tension: 0.1, pointBackgroundColor: '#2563eb', pointRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: labelColor, callback: (v) => '₹' + v }, grid: { color: gridColor } },
+                    x: { ticks: { color: labelColor }, grid: { color: gridColor } }
+                }
+            }
+        });
+    }
+
+    function calculateSummary(subs) {
+        let totalMonthly = 0, nextRenewalDate = null, nextRenewalName = "N/A", activeCount = 0, totalYearly = 0;
+        const categoryTotals = {};
+        const today = new Date(); today.setHours(0,0,0,0);
+        subs.forEach(sub => {
+            const nextDue = new Date(sub.nextDue);
+            if (sub.cycle !== 'onetime' && nextDue >= today) activeCount++;
+            if (nextDue >= today && (nextRenewalDate === null || nextDue < nextRenewalDate)) {
+                nextRenewalDate = nextDue; nextRenewalName = sub.name;
+            }
+            let monthlyCost = 0, yearlyCost = 0;
+            if(sub.cycle === 'monthly') { monthlyCost = sub.price; yearlyCost = sub.price * 12; }
+            else if (sub.cycle === 'yearly') { monthlyCost = sub.price / 12; yearlyCost = sub.price; }
+            else if (sub.cycle === 'quarterly') { monthlyCost = sub.price / 3; yearlyCost = sub.price * 4; }
+            totalMonthly += monthlyCost; totalYearly += yearlyCost;
+            categoryTotals[sub.category] = (categoryTotals[sub.category] || 0) + yearlyCost;
+        });
+        const nextRenewalText = nextRenewalDate ? `${nextRenewalName} (${nextRenewalDate.toLocaleDateString()})` : "No upcoming";
+        return {
+            totalMonthly: totalMonthly.toFixed(2), totalYearly: totalYearly.toFixed(2), activeCount, nextRenewalText,
+            categoryLabels: Object.keys(categoryTotals), categoryData: Object.values(categoryTotals)
+        };
+    }
+
+    function updateDashboardUI(summary) {
+        totalMonthlyEl.textContent = `₹${summary.totalMonthly}`;
+        totalYearlyEl.textContent = `₹${summary.totalYearly}`;
+        activeSubsEl.textContent = summary.activeCount;
+        nextRenewalEl.textContent = summary.nextRenewalText;
+        if (summary.totalMonthly > 5000) savingsSuggestionEl.textContent = `Review 'Software' and 'Streaming' categories for savings.`;
+        else if (allSubscriptions.length > 5) savingsSuggestionEl.textContent = `You have ${allSubscriptions.length} subscriptions. Review and cancel any unused ones.`;
+        else savingsSuggestionEl.textContent = "Your spending looks great!";
+
+        createOrUpdateChart(summary.categoryLabels, summary.categoryData);
+        const trendLabels = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+        const trendData = [550.50, 600.20, 750.00, 700.00, 800.75, summary.totalMonthly];
+        createOrUpdateLineChart(trendLabels, trendData);
+        updateNotificationPanel(allSubscriptions);
+    }
+
+    function createSubscriptionCard(sub) {
+        const card = document.createElement('div');
+        card.className = 'sub-card bg-white dark:bg-slate-800 rounded-lg shadow-md flex flex-col justify-between overflow-hidden';
+        const today = new Date(); today.setHours(0,0,0,0);
+        const nextDue = new Date(sub.nextDue);
+        const daysLeft = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        let statusColor = 'text-green-600 dark:text-green-400', statusText = `Renews in ${daysLeft} days`, borderColor = 'border-green-500';
+        if (daysLeft < 0) { statusColor = 'text-gray-500 dark:text-gray-400'; statusText = 'Expired'; borderColor = 'border-gray-400'; }
+        else if (daysLeft <= 5) { statusColor = 'text-orange-600 dark:text-orange-400'; statusText = `Renews in ${daysLeft} days!`; borderColor = 'border-orange-500'; }
+        if (sub.cycle === 'onetime') { statusColor = 'text-blue-600 dark:text-blue-400'; statusText = 'One-time purchase'; borderColor = 'border-blue-500'; }
+
+        card.innerHTML = `
+            <div class="p-5">
+            <div class="flex justify-between items-start mb-2">
+                <div class="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full">
+                    <i data-lucide="${sub.icon || 'wallet'}" class="w-6 h-6"></i>
+                </div>
+                <span class="font-bold text-xl">${sub.currency}${sub.price}</span>
+            </div>
+            <h4 class="text-lg font-semibold truncate mt-3">${sub.name}</h4>
+            <p class="text-sm ${statusColor} font-medium">${statusText}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Billed ${sub.cycle}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center mt-1"><i data-lucide="credit-card" class="w-4 h-4 mr-2 flex-shrink-0"></i> ${sub.paymentMethod || 'No method'}</p>
+            ${sub.notes ? `<div class="mt-2 p-2 bg-gray-50 dark:bg-slate-700 rounded-md"><p class="text-xs text-gray-600 dark:text-gray-300 italic">${sub.notes}</p></div>` : ''}
+            ${sub.receiptUrl ? `<div class="mt-2"><a href="${sub.receiptUrl}" target="_blank" rel="noopener noreferrer" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"><i data-lucide="receipt" class="w-3 h-3 mr-1"></i> View Receipt</a></div>` : ''}
+        </div>
+        <button data-id="${sub.id}" class="edit-sub-btn w-full text-center text-sm font-medium text-blue-600 dark:text-blue-400 p-3 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+            View / Edit
+        </button>`;
+
+        card.style.borderTop = `4px solid var(--tw-color)`;
+        card.style.borderColor = borderColor.split('-')[1] === 'gray' ? '#9ca3af' :
+                                borderColor.split('-')[1] === 'orange' ? '#f97316' :
+                                borderColor.split('-')[1] === 'blue' ? '#3b82f6' : '#22c55e';
+
+        const editBtn = card.querySelector('.edit-sub-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => openSubscriptionModal(allSubscriptions.find(s => s.id === parseInt(sub.id)) ));
+        }
+        return card;
+    }
+
+    function openSubscriptionModal(sub = null) {
+        subscriptionForm.reset();
+        resetSubFormValidation();
+
+        if (sub) {
+            subModalTitle.textContent = sub.id ? "Edit Subscription" : "Add New Subscription";
+            deleteSubButton.classList.toggle('hidden', !sub.id);
+
+            document.getElementById('sub-id').value = sub.id || "";
+            document.getElementById('sub-name').value = sub.name || "";
+            document.getElementById('sub-price').value = sub.price || "";
+            document.getElementById('sub-currency').value = sub.currency || "₹";
+            document.getElementById('sub-cycle').value = sub.cycle || "monthly";
+            document.getElementById('sub-next-due').value = sub.nextDue || todayString;
+            document.getElementById('sub-category').value = sub.category || "Other";
+            document.getElementById('sub-payment').value = sub.paymentMethod || 'Other';
+            document.getElementById('sub-notes').value = sub.notes || "";
+            document.getElementById('sub-receipt-url').value = sub.receiptUrl || '';
+            document.getElementById('sub-icon').value = sub.icon || 'wallet';
+        } else {
+            subModalTitle.textContent = "Add New Subscription";
+            deleteSubButton.classList.add('hidden');
+            document.getElementById('sub-id').value = "";
+            document.getElementById('sub-next-due').value = todayString;
+            document.getElementById('sub-icon').value = "wallet";
+        }
+        modals.subscription.classList.remove('hidden');
+    }
+
+    function openSmartAddModal() {
+        smartAddGrid.innerHTML = '';
+        predefinedSubscriptions.forEach(sub => {
+            const card = document.createElement('button');
+            card.className = "group text-left p-4 bg-white dark:bg-slate-700 rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 dark:hover:bg-slate-600 transition-all";
+            card.innerHTML = `
+                <div class="p-2 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded-full w-10 h-10 flex items-center justify-center">
+                    <i data-lucide="${sub.icon}" class="w-5 h-5"></i>
+                </div>
+                <h4 class="font-semibold mt-3 truncate">${sub.name}</h4>
+                <p class="text-sm text-gray-500 dark:text-gray-400">₹${sub.price}/mo</p>
+            `;
+            card.addEventListener('click', () => {
+                openSubscriptionModal({
+                    ...sub,
+                    nextDue: todayString,
+                    currency: "₹",
+                    cycle: "monthly"
+                });
+                modals.smartAdd.classList.add('hidden');
+            });
+            smartAddGrid.appendChild(card);
+        });
+        lucide.createIcons();
+        modals.smartAdd.classList.remove('hidden');
+    }
+
+    function updateNotificationPanel(subs) {
+        notificationList.innerHTML = ''; let notificationsFound = false;
+        const today = new Date(); today.setHours(0,0,0,0);
+        subs.forEach(sub => {
+            const nextDue = new Date(sub.nextDue);
+            const daysLeft = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysLeft >= 0 && daysLeft <= 5) {
+                notificationsFound = true;
+                const li = document.createElement('div');
+                li.className = 'p-3 hover:bg-gray-50 dark:hover:bg-slate-700 border-b dark:border-slate-700 last:border-b-0 cursor-pointer';
+                li.innerHTML = `<p class="text-sm font-medium">${sub.name} is renewing soon!</p><p class="text-xs text-gray-500 dark:text-gray-400">${sub.currency}${sub.price} is due in ${daysLeft === 0 ? 'today' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`}.</p>`;
+                li.addEventListener('click', () => {
+                    showAppPage('subscription');
+                    openSubscriptionModal(sub);
+                    notificationPanel.classList.add('hidden');
+                });
+                notificationList.appendChild(li);
+            }
+        });
+        if (!notificationsFound) {
+            notificationAlert.classList.add('hidden');
+            notificationList.innerHTML = '<p class="p-4 text-sm text-gray-500 dark:text-gray-400 text-center">No new notifications.</p>';
+        } else { notificationAlert.classList.remove('hidden'); }
+    }
+
+    // ===========================================
+    // === PANTRY MANAGER APP ====================
+    // ===========================================
+
+    // --- Elements ---
+    const pantryTabButtons = document.querySelectorAll('.pantry-tab-button');
+    const pantryTabContents = document.querySelectorAll('.pantry-tab-content');
+    const emptyPlaceholder = document.getElementById('emptyPlaceholder');
+    const listsContainer = document.getElementById('itemListsContainer');
+    const openItemModalButton = document.getElementById('openAddItemModal');
+    const itemForm = document.getElementById('itemForm');
+    const itemModalTitle = document.getElementById('itemModalTitle');
+    const locationSelect = document.getElementById('item-location');
+    const expiryInput = document.getElementById('item-expiry');
+
+    let currentPantryTab = 'fridge';
+
+    function initPantryListeners() {
+        pantryTabButtons.forEach(button => button.addEventListener('click', handlePantryTabClick));
+        openItemModalButton.addEventListener('click', openItemModal);
+
+        // ENHANCED: Pantry item form with API
+        itemForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(itemForm);
+            const item = Object.fromEntries(formData.entries());
+
+            try {
+                setLoading(true);
+                await ApiService.createPantryItem(item);
+                showMessage('Item added!', 'success');
+
+                if (item.location !== currentPantryTab) {
+                    currentPantryTab = item.location;
+                    pantryTabButtons.forEach(button => {
+                        if (button.dataset.tab === currentPantryTab) {
+                            button.classList.add('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                            button.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                        } else {
+                            button.classList.remove('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                            button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+                        }
+                    });
+                }
+
+                await loadAllData();
+                modals.pantry.classList.add('hidden');
+            } catch (error) {
+                showMessage('Failed to add item', 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+    }
+
+    function handlePantryTabClick(e) {
+        const clickedTab = e.currentTarget.dataset.tab;
+
+        pantryTabButtons.forEach(button => {
+            if (button.dataset.tab === clickedTab) {
+                button.classList.add('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                button.classList.remove('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+            } else {
+                button.classList.remove('tab-active', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
+                button.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
+            }
+        });
+
+        currentPantryTab = clickedTab;
+        renderPantryItems();
+    }
+
+    function renderPantryItems() {
+        pantryTabContents.forEach(content => {
+            content.classList.toggle('hidden', content.id !== `${currentPantryTab}List`);
+        });
+
+        const listEl = document.getElementById(`${currentPantryTab}List`);
+        if (!listEl) return;
+        listEl.innerHTML = '';
+        const itemsForTab = allItems.filter(item => item.location === currentPantryTab);
+
+        if (itemsForTab.length === 0) {
+            emptyPlaceholder.classList.remove('hidden');
+            listsContainer.classList.add('hidden');
+        } else {
+            emptyPlaceholder.classList.add('hidden');
+            listsContainer.classList.remove('hidden');
+            itemsForTab.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+            itemsForTab.forEach(item => listEl.appendChild(createItemCard(item)));
+        }
+        lucide.createIcons();
+    }
+
+    function getExpiryStatus(expiryDate) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const expiry = new Date(expiryDate);
+        const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysLeft < 0) return { text: 'Expired', color: 'red', days: daysLeft };
+        if (daysLeft === 0) return { text: 'Expires Today', color: 'red', days: daysLeft };
+        if (daysLeft <= 3) return { text: `Expires in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`, color: 'orange', days: daysLeft };
+        return { text: `Expires in ${daysLeft} days`, color: 'green', days: daysLeft };
+    }
+
+    function createItemCard(item) {
+        const card = document.createElement('div');
+        const status = getExpiryStatus(item.expiry);
+        const colorClasses = { red: 'border-red-500', orange: 'border-orange-500', green: 'border-green-500' };
+        const textColorClasses = { red: 'text-red-600 dark:text-red-400', orange: 'text-orange-600 dark:text-orange-400', green: 'text-green-600 dark:text-green-400' };
+        card.className = `item-card bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex flex-col justify-between border-l-4 ${colorClasses[status.color]}`;
+        card.innerHTML = `
+            <div>
+            <div class="flex justify-between items-start">
+                <h4 class="text-lg font-semibold truncate">${item.name}</h4>
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">${item.quantity}</span>
+            </div>
+            <p class="text-sm ${textColorClasses[status.color]} font-medium mt-1">${status.text}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Expiry: ${item.expiry}</p>
+        </div>
+        <button data-id="${item.id}" class="delete-item-btn mt-4 w-full text-center text-sm font-medium text-red-600 dark:text-red-400 hover:underline flex items-center justify-center">
+            <i data-lucide="trash-2" class="w-4 h-4 mr-1"></i>
+            Delete
+        </button>`;
+
+        const deleteBtn = card.querySelector('.delete-item-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                const itemId = deleteBtn.dataset.id;
+                try {
+                    setLoading(true);
+                    await handleDeletePantryItemWithAPI(itemId);
+                } catch (error) {
+                    // Error handled in the function
+                } finally {
+                    setLoading(false);
+                }
+            });
+        }
+        return card;
+    }
+
+    function openItemModal() {
+        itemForm.reset();
+        itemModalTitle.textContent = "Add New Item";
+        locationSelect.value = currentPantryTab;
+        expiryInput.value = todayString;
+        document.getElementById('item-id').value = "";
+        modals.pantry.classList.remove('hidden');
+    }
+
+    // ===========================================
+    // === BILL TRACKER APP ======================
+    // ===========================================
+
+    // --- Elements ---
+    const billListContainer = document.getElementById('billListContainer');
+    const billPlaceholder = document.getElementById('billPlaceholder');
+    const openAddBillModalBtn = document.getElementById('openAddBillModal');
+    const billForm = document.getElementById('billForm');
+    const billModalTitle = document.getElementById('billModalTitle');
+    const deleteBillButton = document.getElementById('deleteBillButton');
+
+    function initBillListeners() {
+        if (openAddBillModalBtn) {
+            openAddBillModalBtn.addEventListener('click', openBillModal);
+        }
+
+        // ENHANCED: Bill form with API
+        billForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(billForm);
+            const bill = Object.fromEntries(formData.entries());
+            bill.amount = parseFloat(bill.amount);
+
+            try {
+                setLoading(true);
+                if (bill.id) {
+                    await ApiService.updateBill(bill);
+                    showMessage('Bill updated!', 'success');
+                } else {
+                    await ApiService.createBill(bill);
+                    showMessage('Bill added!', 'success');
+                }
+                await loadAllData();
+                modals.bill.classList.add('hidden');
+            } catch (error) {
+                showMessage('Failed to save bill', 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // Delete bill button in modal
+        deleteBillButton.addEventListener('click', async () => {
+            const billId = document.getElementById('bill-id').value;
+            if (!billId) return;
+
+            try {
+                await handleDeleteBillWithAPI(billId);
+                modals.bill.classList.add('hidden');
+            } catch (error) {
+                // Error already shown
+            }
+        });
+    }
+
+    function renderBills() {
+        billListContainer.innerHTML = '';
+        if (allBills.length === 0) {
+            billListContainer.appendChild(billPlaceholder);
+            billPlaceholder.classList.remove('hidden');
+        } else {
+            billPlaceholder.classList.add('hidden');
+            allBills.sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+            allBills.forEach(bill => billListContainer.appendChild(createBillCard(bill)));
+        }
+        lucide.createIcons();
+    }
+
+    function createBillCard(bill) {
+        const card = document.createElement('div');
+        const isPaid = bill.status === 'Paid';
+        const statusColor = isPaid ? 'border-green-500' : 'border-red-500';
+        const statusText = isPaid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+
+        card.className = `bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex items-center justify-between border-l-4 ${statusColor}`;
+        card.innerHTML = `
+            <div class="flex-1">
+                <h4 class="text-lg font-semibold">${bill.name}</h4>
+                <p class="text-xl font-bold">₹${bill.amount.toFixed(2)}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Due: ${bill.dueDate}</p>
+            </div>
+            <div class="flex items-center space-x-2">
+                ${isPaid ? `
+                    <span class="font-semibold ${statusText}">Paid</span>
+                ` : `
+                    <button data-id="${bill.id}" class="mark-paid-btn inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600" title="Mark as Paid">
+                        <i data-lucide="check" class="w-4 h-4 mr-2"></i>
+                        Mark as Paid
+                    </button>
+                `}
+                <button data-id="${bill.id}" class="edit-bill-btn inline-flex items-center rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-slate-600" title="Edit Bill">
+                    <i data-lucide="edit-2" class="w-4 h-4 mr-2"></i>
+                    Edit
+                </button>
+                <button data-id="${bill.id}" class="delete-bill-btn inline-flex items-center rounded-md border border-red-300 dark:border-red-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm font-medium text-red-600 dark:text-red-400 shadow-sm hover:bg-red-50 dark:hover:bg-slate-600" title="Delete Bill">
+                    <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i>
+                    Delete
+                </button>
+            </div>
+        `;
+
+        const markPaidBtn = card.querySelector('.mark-paid-btn');
+        if (markPaidBtn) {
+            markPaidBtn.addEventListener('click', async () => {
+                const billId = parseInt(markPaidBtn.dataset.id);
+                try {
+                    setLoading(true);
+                    await ApiService.markBillPaid(billId);
+                    showMessage('Bill marked as paid!', 'success');
+                    await loadAllData();
+                } catch (error) {
+                    showMessage('Failed to mark bill as paid', 'error');
+                } finally {
+                    setLoading(false);
+                }
+            });
+        }
+
+        const editBtn = card.querySelector('.edit-bill-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                const bill = allBills.find(b => b.id === parseInt(editBtn.dataset.id));
+                openBillModal(bill);
+            });
+        }
+
+        const deleteBtn = card.querySelector('.delete-bill-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                const billId = parseInt(deleteBtn.dataset.id);
+                try {
+                    setLoading(true);
+                    await handleDeleteBillWithAPI(billId);
+                } catch (error) {
+                    // Error handled
+                } finally {
+                    setLoading(false);
+                }
+            });
+        }
+
+        return card;
+    }
+
+    function openBillModal(bill = null) {
+        billForm.reset();
+
+        if (bill) {
+            billModalTitle.textContent = "Edit Bill";
+            deleteBillButton.classList.remove('hidden');
+
+            document.getElementById('bill-id').value = bill.id || "";
+            document.getElementById('bill-name').value = bill.name || "";
+            document.getElementById('bill-amount').value = bill.amount || "";
+            document.getElementById('bill-due-date').value = bill.dueDate || todayString;
+            document.getElementById('bill-status').value = bill.status || "Unpaid";
+        } else {
+            billModalTitle.textContent = "Add New Bill";
+            deleteBillButton.classList.add('hidden');
+            document.getElementById('bill-id').value = "";
+            document.getElementById('bill-due-date').value = todayString;
+        }
+        modals.bill.classList.remove('hidden');
+    }
+
+    // ===========================================
+    // === EXPENSE TRACKER APP ===================
+    // ===========================================
+
+    // --- Elements ---
+    const expenseListContainer = document.getElementById('expenseListContainer');
+    const expensePlaceholder = document.getElementById('expensePlaceholder');
+    const openAddExpenseModalBtn = document.getElementById('openAddExpenseModal');
+    const expenseForm = document.getElementById('expenseForm');
+    const expenseModalTitle = document.getElementById('expenseModalTitle');
+
+    function initExpenseListeners() {
+        if (openAddExpenseModalBtn) {
+            openAddExpenseModalBtn.addEventListener('click', openExpenseModal);
+        }
+
+        // ENHANCED: Expense form with API
+        expenseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(expenseForm);
+            const expense = Object.fromEntries(formData.entries());
+            expense.amount = parseFloat(expense.amount);
+
+            try {
+                setLoading(true);
+                await ApiService.createExpense(expense);
+                showMessage('Expense added!', 'success');
+                await loadAllData();
+                modals.expense.classList.add('hidden');
+            } catch (error) {
+                showMessage('Failed to add expense', 'error');
+            } finally {
+                setLoading(false);
+            }
+        });
+    }
+
+    function renderExpenses() {
+        expenseListContainer.innerHTML = '';
+        if (allExpenses.length === 0) {
+            expenseListContainer.appendChild(expensePlaceholder);
+            expensePlaceholder.classList.remove('hidden');
+        } else {
+            expensePlaceholder.classList.add('hidden');
+            allExpenses.sort((a,b) => new Date(b.date) - new Date(a.date));
+            allExpenses.forEach(exp => expenseListContainer.appendChild(createExpenseCard(exp)));
+        }
+        lucide.createIcons();
+    }
+
+    function createExpenseCard(expense) {
+        const card = document.createElement('div');
+        card.className = `bg-white dark:bg-slate-800 p-4 rounded-lg shadow-md flex items-center justify-between`;
+        card.innerHTML = `
+            <div class="flex items-center space-x-4">
+                <span class="text-xs font-semibold px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full">${expense.category}</span>
+                <div>
+                    <h4 class="text-lg font-semibold">${expense.name}</h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${expense.date}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-xl font-bold">₹${expense.amount.toFixed(2)}</p>
+                <button data-id="${expense.id}" class="delete-expense-btn text-xs text-red-500 hover:underline">Delete</button>
+            </div>
+        `;
+
+        const deleteBtn = card.querySelector('.delete-expense-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                const expenseId = parseInt(deleteBtn.dataset.id);
+                try {
+                    setLoading(true);
+                    await handleDeleteExpenseWithAPI(expenseId);
+                } catch (error) {
+                    // Error handled
+                } finally {
+                    setLoading(false);
+                }
+            });
+        }
+        return card;
+    }
+
+    function openExpenseModal() {
+        expenseForm.reset();
+        expenseModalTitle.textContent = "Add New Expense";
+        document.getElementById('expense-id').value = "";
+        document.getElementById('expense-date').value = todayString;
+        modals.expense.classList.remove('hidden');
+    }
+
+    // --- APP INITIALIZATION ---
+    applyDarkMode();
+    initGlobalListeners();
+    initHomeDashboardListeners();
+    initSubscriptionListeners();
+    initPantryListeners();
+    initBillListeners();
+    initExpenseListeners();
+    initNewFeatures();
+    initializeAppWithAPI();
+});
 </script>
 </body>
 </html>

@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 
 public class JavaBackendServer {
@@ -128,9 +129,55 @@ public class JavaBackendServer {
 
     static class ApiHandler implements HttpHandler {
 
-        private long getAuthenticatedUserId(HttpExchange exchange) {
-            return 1L; // Hardcoded for your development
+        // ========== NEW AUTH HELPER METHODS ==========
+
+        // Generate a random authentication token
+        private String generateAuthToken(long userId) {
+            return "token-" + userId + "-" + UUID.randomUUID().toString();
         }
+
+        // Store token in database
+        private void storeAuthToken(Connection conn, long userId, String token) throws SQLException {
+            String sql = "INSERT INTO auth_tokens (user_id, token, expires_at) VALUES (?, ?, ?)";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, userId);
+                ps.setString(2, token);
+                // Token expires in 7 days
+                ps.setTimestamp(3, new Timestamp(System.currentTimeMillis() + (7L * 24 * 60 * 60 * 1000)));
+                ps.executeUpdate();
+            }
+        }
+
+        // Validate token and get user ID
+        private long validateAuthToken(Connection conn, String token) throws SQLException {
+            String sql = "SELECT user_id FROM auth_tokens WHERE token = ? AND expires_at > NOW()";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, token);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getLong("user_id");
+                    }
+                }
+            }
+            return -1; // Invalid or expired token
+        }
+
+        // Get authenticated user ID from Authorization header
+        private long getAuthenticatedUserId(HttpExchange exchange, Connection conn) throws SQLException {
+            // Get Authorization header
+            String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return -1; // No authentication
+            }
+
+            String token = authHeader.substring(7); // Remove "Bearer " prefix
+
+            // Validate the token
+            return validateAuthToken(conn, token);
+        }
+
+        // ========== END OF NEW AUTH METHODS ==========
 
         // Helper to get ID from URL query string (?id=123)
         private Map<String, String> queryToMap(String query) {
@@ -180,7 +227,55 @@ public class JavaBackendServer {
             System.out.println("📨 Request: " + method + " " + path);
 
             try (Connection conn = DatabaseUtil.getConnection()) {
-                long userId = getAuthenticatedUserId(exchange);
+                // ===== PUBLIC ENDPOINTS (don't need authentication) =====
+                if (path.equals("/api/auth/login")) {
+                    if ("POST".equals(method)) {
+                        handleLogin(exchange, conn);
+                    } else {
+                        sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+                    }
+                    return;
+                }
+
+                if (path.equals("/api/auth/signup")) {
+                    if ("POST".equals(method)) {
+                        handleSignup(exchange, conn);
+                    } else {
+                        sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+                    }
+                    return;
+                }
+
+                // Test and health endpoints are public
+                if (path.equals("/api/test") || path.equals("/health")) {
+                    if ("GET".equals(method)) {
+                        if (path.equals("/api/test")) {
+                            JSONObject response = new JSONObject();
+                            response.put("status", "success");
+                            response.put("message", "Backend is working!");
+                            response.put("timestamp", System.currentTimeMillis());
+                            sendResponse(exchange, 200, response.toString());
+                        } else {
+                            JSONObject response = new JSONObject();
+                            response.put("status", "healthy");
+                            response.put("service", "homeapp-backend");
+                            sendResponse(exchange, 200, response.toString());
+                        }
+                    } else {
+                        sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
+                    }
+                    return;
+                }
+
+                // ===== PROTECTED ENDPOINTS (need authentication) =====
+                long userId = getAuthenticatedUserId(exchange, conn);
+
+                if (userId == -1) {
+                    sendResponse(exchange, 401, "{\"error\": \"Authentication required. Please login.\"}");
+                    return;
+                }
+
+                System.out.println("✅ Authenticated User ID: " + userId);
 
                 // FIXED: Handle individual resource endpoints first (with IDs)
                 if (path.startsWith("/api/subscriptions/") && !path.equals("/api/subscriptions")) {
@@ -215,33 +310,32 @@ public class JavaBackendServer {
                         sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
                     }
                 }
-                else if(path.equals("/api/auth/login")) {
-                    if ("POST".equals(method)) handleLogin(exchange, conn);
-                    else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
-                } else if (path.equals("/api/auth/signup")) {
-                    if ("POST".equals(method)) handleSignup(exchange, conn);
-                    else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
-                } else if (path.equals("/api/user")) {
+                else if (path.equals("/api/user")) {
                     if ("GET".equals(method)) handleGetUser(exchange, conn, userId);
                     else if ("PUT".equals(method)) handleUpdateIncome(exchange, conn, userId);
+                    else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
                 } else if (path.equals("/api/subscriptions")) {
                     if ("GET".equals(method)) handleGetSubscriptions(exchange, conn, userId);
                     else if ("POST".equals(method)) handlePostSubscription(exchange, conn, userId);
                     else if ("PUT".equals(method)) handleUpdateSubscription(exchange, conn, userId);
                     else if ("DELETE".equals(method)) handleDeleteSubscriptionBody(exchange, conn, userId);
+                    else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
                 } else if (path.equals("/api/bills")) {
                     if ("GET".equals(method)) handleGetBills(exchange, conn, userId);
                     else if ("POST".equals(method)) handlePostBill(exchange, conn, userId);
                     else if ("PUT".equals(method)) handleUpdateBillStatus(exchange, conn, userId);
                     else if ("DELETE".equals(method)) handleDeleteBillBody(exchange, conn, userId);
+                    else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
                 } else if (path.equals("/api/expenses")) {
                     if ("GET".equals(method)) handleGetExpenses(exchange, conn, userId);
                     else if ("POST".equals(method)) handlePostExpense(exchange, conn, userId);
                     else if ("DELETE".equals(method)) handleDeleteExpenseBody(exchange, conn, userId);
+                    else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
                 } else if (path.equals("/api/pantry")) {
                     if ("GET".equals(method)) handleGetPantryItems(exchange, conn, userId);
                     else if ("POST".equals(method)) handlePostPantryItem(exchange, conn, userId);
                     else if ("DELETE".equals(method)) handleDeletePantryItemBody(exchange, conn, userId);
+                    else sendResponse(exchange, 405, "{\"error\": \"Method not allowed\"}");
                 } else {
                     sendResponse(exchange, 404, "{\"error\": \"Endpoint not found\"}");
                 }
@@ -425,7 +519,7 @@ public class JavaBackendServer {
         }
 
         // ----------------------------------------------------
-        // AUTH, GET, POST (FIXED to include all required fields)
+        // AUTH, GET, POST (UPDATED with real tokens)
         // ----------------------------------------------------
 
         private void handleLogin(HttpExchange exchange, Connection conn) throws IOException, SQLException {
@@ -435,14 +529,20 @@ public class JavaBackendServer {
                 String email = json.getString("email");
                 String password = json.getString("password");
 
-                String sql = "SELECT * FROM users WHERE email = ?";
+                String sql = "SELECT id, name, email FROM users WHERE email = ? AND password = ?";
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setString(1, email);
+                    ps.setString(2, password);
                     try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next() && rs.getString("password").equals(password)) {
+                        if (rs.next()) {
+                            long userId = rs.getLong("id");
+                            String token = generateAuthToken(userId);
+                            storeAuthToken(conn, userId, token);
+
                             JSONObject resp = new JSONObject();
                             resp.put("status", "success");
-                            resp.put("token", "dummy-token-" + rs.getLong("id"));
+                            resp.put("token", token);
+                            resp.put("userId", userId);
                             resp.put("name", rs.getString("name"));
                             resp.put("email", rs.getString("email"));
                             sendResponse(exchange, 200, resp.toString());
@@ -451,13 +551,28 @@ public class JavaBackendServer {
                         }
                     }
                 }
-            } catch (Exception e) { handleError(exchange, "Login error", e); }
+            } catch (Exception e) {
+                handleError(exchange, "Login error", e);
+            }
         }
 
         private void handleSignup(HttpExchange exchange, Connection conn) throws IOException, SQLException {
             try {
                 String requestBody = readRequestBody(exchange);
                 JSONObject json = new JSONObject(requestBody);
+
+                // Check if email already exists
+                String checkSql = "SELECT id FROM users WHERE email = ?";
+                try (PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
+                    checkPs.setString(1, json.getString("email"));
+                    try (ResultSet rs = checkPs.executeQuery()) {
+                        if (rs.next()) {
+                            sendResponse(exchange, 409, "{\"error\":\"Email already registered\"}");
+                            return;
+                        }
+                    }
+                }
+
                 String insertSql = "INSERT INTO users (name, email, password, monthly_income) VALUES (?, ?, ?, 0.00)";
                 try (PreparedStatement ps = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
                     ps.setString(1, json.getString("name"));
@@ -468,16 +583,22 @@ public class JavaBackendServer {
                     try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                         if (generatedKeys.next()) {
                             long userId = generatedKeys.getLong(1);
+                            String token = generateAuthToken(userId);
+                            storeAuthToken(conn, userId, token);
+
                             JSONObject resp = new JSONObject();
                             resp.put("status", "success");
-                            resp.put("token", "dummy-token-" + userId);
+                            resp.put("token", token);
+                            resp.put("userId", userId);
                             resp.put("name", json.getString("name"));
                             resp.put("email", json.getString("email"));
                             sendResponse(exchange, 201, resp.toString());
                         }
                     }
                 }
-            } catch (Exception e) { handleError(exchange, "Signup error", e); }
+            } catch (Exception e) {
+                handleError(exchange, "Signup error", e);
+            }
         }
 
         private void handleGetUser(HttpExchange exchange, Connection conn, long userId) throws IOException, SQLException {
@@ -783,6 +904,17 @@ public class JavaBackendServer {
                         "password VARCHAR(100) NOT NULL, " +
                         "monthly_income DECIMAL(10,2) DEFAULT 0.00, " +
                         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
+
+                // ========== NEW: Create auth_tokens table ==========
+                stmt.execute("CREATE TABLE IF NOT EXISTS auth_tokens (" +
+                        "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                        "user_id INT NOT NULL, " +
+                        "token VARCHAR(255) UNIQUE NOT NULL, " +
+                        "expires_at TIMESTAMP NOT NULL, " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)");
+                System.out.println("✅ Auth tokens table created");
+                // ====================================================
 
                 // Create subscriptions table
                 stmt.execute("CREATE TABLE IF NOT EXISTS subscriptions (" +
